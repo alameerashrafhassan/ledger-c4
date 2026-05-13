@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 3: ProcessorMediator Components</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  .clickable rect, .clickable ellipse { transition: opacity 0.15s ease; cursor: pointer; }
+  .clickable:hover rect, .clickable:hover ellipse { opacity: 0.85; }
+  .clickable:hover text.node-name { text-decoration: underline; }
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <strong>Component (ProcessorMediator)</strong> &gt; Code</div>
+  <a class="back" href="level2-container.html">← Back to Container</a>
+  <h1>C4 Level 3 — Components inside ProcessorMediator + CMS Adapters</h1>
+  <div class="subtitle">The CMS abstraction layer: a single dispatcher and three sets of adapter services, plus shared HTTP/log infrastructure.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1320 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ProcessorMediator Components Diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+        <linearGradient id="cylTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0d4f8f" /><stop offset="1" stop-color="#1168BD" />
+        </linearGradient>
+      </defs>
+
+      <rect x="40" y="60" width="1240" height="660" rx="14" fill="none" stroke="#1168BD" stroke-width="2" stroke-dasharray="6 4" />
+      <text x="60" y="85" font-size="14" fill="#1168BD" font-weight="700">ProcessorMediator + CMS Adapters container</text>
+
+      <!-- Callers (top) -->
+      <g>
+        <rect x="240" y="0" width="220" height="50" rx="8" fill="#1168BD" />
+        <text x="350" y="22" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Rails API (callers)</text>
+        <text x="350" y="40" text-anchor="middle" fill="#cfdcef" font-size="11">[other container]</text>
+      </g>
+      <g>
+        <rect x="860" y="0" width="220" height="50" rx="8" fill="#1168BD" />
+        <text x="970" y="22" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Sidekiq Workers (callers)</text>
+        <text x="970" y="40" text-anchor="middle" fill="#cfdcef" font-size="11">[other container]</text>
+      </g>
+
+      <!-- ProcessorMediator (clickable) -->
+      <g class="clickable">
+        <a href="level4-code-processor-mediator.html">
+          <rect x="460" y="120" width="400" height="100" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="660" y="150" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">ProcessorMediator</text>
+          <text x="660" y="167" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: Ruby class]</text>
+          <text x="660" y="187" text-anchor="middle" fill="#fff" font-size="11">Static MAPPING of service_key → CMS class.</text>
+          <text x="660" y="201" text-anchor="middle" fill="#fff" font-size="11">Returns the right adapter for a beneficiary.</text>
+        </a>
+      </g>
+
+      <!-- Common services -->
+      <g>
+        <rect x="500" y="260" width="320" height="80" rx="10" fill="#1168BD" />
+        <text x="660" y="290" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Common Services</text>
+        <text x="660" y="307" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: app/services/common]</text>
+        <text x="660" y="325" text-anchor="middle" fill="#fff" font-size="11">Unify CMS interfaces where they differ.</text>
+      </g>
+
+      <!-- Three adapter columns -->
+      <!-- PTL (clickable) -->
+      <g class="clickable">
+        <a href="level4-code-paymentology-service.html">
+          <rect x="80" y="380" width="280" height="180" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="220" y="410" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Paymentology Adapter</text>
+          <text x="220" y="427" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: Paymentology::*]</text>
+          <text x="220" y="450" text-anchor="middle" fill="#fff" font-size="11">Cards / Balances / Accounts /</text>
+          <text x="220" y="465" text-anchor="middle" fill="#fff" font-size="11">Transactions service objects.</text>
+          <text x="220" y="490" text-anchor="middle" fill="#fff" font-size="11">All inherit Paymentology::Base.</text>
+          <text x="220" y="515" text-anchor="middle" fill="#a8c5e6" font-size="10" font-style="italic">Click to open code →</text>
+        </a>
+      </g>
+
+      <!-- Postilion -->
+      <g>
+        <rect x="520" y="380" width="280" height="180" rx="10" fill="#1168BD" />
+        <text x="660" y="410" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Postilion Adapter</text>
+        <text x="660" y="427" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: Postilion::*]</text>
+        <text x="660" y="450" text-anchor="middle" fill="#fff" font-size="11">Same operations, ACI/Postilion</text>
+        <text x="660" y="465" text-anchor="middle" fill="#fff" font-size="11">protocol/encoding under the hood.</text>
+        <text x="660" y="490" text-anchor="middle" fill="#fff" font-size="11">Inherits Postilion::Base.</text>
+      </g>
+
+      <!-- EBC -->
+      <g>
+        <rect x="960" y="380" width="280" height="180" rx="10" fill="#1168BD" />
+        <text x="1100" y="410" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">EBC Adapter</text>
+        <text x="1100" y="427" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: Ebc::*]</text>
+        <text x="1100" y="450" text-anchor="middle" fill="#fff" font-size="11">Bulk nameless cards lifecycle;</text>
+        <text x="1100" y="465" text-anchor="middle" fill="#fff" font-size="11">all calls go via the CDE proxy.</text>
+        <text x="1100" y="490" text-anchor="middle" fill="#fff" font-size="11">Inherits Ebc::Base.</text>
+      </g>
+
+      <!-- HttpClients row -->
+      <g>
+        <rect x="80" y="600" width="280" height="80" rx="10" fill="#1168BD" />
+        <text x="220" y="630" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">HttpClients::Paymentology</text>
+        <text x="220" y="650" text-anchor="middle" fill="#cfdcef" font-size="11">REST client + paymentology_log</text>
+      </g>
+      <g>
+        <rect x="520" y="600" width="280" height="80" rx="10" fill="#1168BD" />
+        <text x="660" y="630" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">HttpClients::Postilion</text>
+        <text x="660" y="650" text-anchor="middle" fill="#cfdcef" font-size="11">REST client + postilion_log</text>
+      </g>
+      <g>
+        <rect x="960" y="600" width="280" height="80" rx="10" fill="#1168BD" />
+        <text x="1100" y="630" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">HttpClients::Ebc (via CDE)</text>
+        <text x="1100" y="650" text-anchor="middle" fill="#cfdcef" font-size="11">REST client + ebc_log</text>
+      </g>
+
+      <!-- External CMSs (right side, outside boundary) -->
+      <g>
+        <rect x="1100" y="80" width="180" height="50" rx="8" fill="#999999" />
+        <text x="1190" y="102" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Paymentology</text>
+        <text x="1190" y="120" text-anchor="middle" fill="#eee" font-size="10">[External CMS]</text>
+      </g>
+      <g>
+        <rect x="1100" y="160" width="180" height="50" rx="8" fill="#999999" />
+        <text x="1190" y="182" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">ACI / Postilion</text>
+        <text x="1190" y="200" text-anchor="middle" fill="#eee" font-size="10">[External CMS]</text>
+      </g>
+      <g>
+        <rect x="1100" y="240" width="180" height="50" rx="8" fill="#999999" />
+        <text x="1190" y="262" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">EBC via CDE Proxy</text>
+        <text x="1190" y="280" text-anchor="middle" fill="#eee" font-size="10">[External CMS]</text>
+      </g>
+
+      <!-- Treasury DB -->
+      <g>
+        <ellipse cx="220" cy="730" rx="120" ry="14" fill="url(#cylTop)" />
+        <rect x="100" y="730" width="240" height="40" fill="#1168BD" />
+        <ellipse cx="220" cy="770" rx="120" ry="14" fill="#1168BD" />
+        <text x="220" y="755" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Treasury DB</text>
+      </g>
+      <g>
+        <ellipse cx="1080" cy="730" rx="120" ry="14" fill="url(#cylTop)" />
+        <rect x="960" y="730" width="240" height="40" fill="#1168BD" />
+        <ellipse cx="1080" cy="770" rx="120" ry="14" fill="#1168BD" />
+        <text x="1080" y="755" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Primary DB (logs)</text>
+      </g>
+
+      <!-- Arrows -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M350,50 L560,120" marker-end="url(#arrow)" />
+        <path d="M970,50 L760,120" marker-end="url(#arrow)" />
+        <path d="M660,220 L660,260" marker-end="url(#arrow)" />
+        <path d="M540,340 L240,380" marker-end="url(#arrow)" />
+        <path d="M660,340 L660,380" marker-end="url(#arrow)" />
+        <path d="M780,340 L1080,380" marker-end="url(#arrow)" />
+        <path d="M220,560 L220,600" marker-end="url(#arrow)" />
+        <path d="M660,560 L660,600" marker-end="url(#arrow)" />
+        <path d="M1100,560 L1100,600" marker-end="url(#arrow)" />
+        <!-- to externals -->
+        <path d="M360,640 L1100,110" marker-end="url(#arrow)" />
+        <path d="M800,640 L1100,190" marker-end="url(#arrow)" />
+        <path d="M1240,640 L1190,290" marker-end="url(#arrow)" />
+        <!-- to logs DB and treasury -->
+        <path d="M360,680 L960,730" marker-end="url(#arrow)" />
+        <path d="M220,680 L220,718" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="430" y="100">.for(:key, beneficiary)</text>
+        <text x="830" y="100">.for(:key, beneficiary)</text>
+        <text x="660" y="250">helpers</text>
+        <text x="220" y="585">[Ruby]</text>
+        <text x="660" y="585">[Ruby]</text>
+        <text x="1100" y="585">[Ruby]</text>
+        <text x="700" y="380" transform="rotate(-32 700 380)">[HTTPS/JSON]</text>
+        <text x="990" y="500" transform="rotate(-50 990 500)">via CDE [HTTPS]</text>
+        <text x="500" y="710">log to *_log tables [SQL]</text>
+        <text x="240" y="715">treasury writes [SQL]</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Component</span>
+    <span><span class="swatch" style="background:#999999"></span>External System</span>
+    <span>Cylinder = data store</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Inside the CMS-mediation container, this view shows the dispatcher (<code>ProcessorMediator</code>), the three CMS adapter families, and the HTTP-client/log layer that backs them. The diagram exists primarily to make the &quot;single choke-point&quot; rule visible.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ProcessorMediator</td><td>Component</td><td>Plain Ruby</td><td>Hosts the MAPPING from service_key → CMS class; <code>.for(key, beneficiary)</code> picks based on cms_marker.</td></tr>
+      <tr><td>Common Services</td><td>Component</td><td>Plain Ruby</td><td>Smooths over CMS-shaped differences callers shouldn't have to know about.</td></tr>
+      <tr><td>Paymentology Adapter</td><td>Component</td><td>Ruby service objects under <code>Paymentology::*</code></td><td>Cards / balances / accounts / transactions for PTL.</td></tr>
+      <tr><td>Postilion Adapter</td><td>Component</td><td>Ruby service objects under <code>Postilion::*</code></td><td>Same operations on ACI/Postilion.</td></tr>
+      <tr><td>EBC Adapter</td><td>Component</td><td>Ruby service objects under <code>Ebc::*</code></td><td>Bulk nameless card lifecycle; all calls via CDE proxy.</td></tr>
+      <tr><td>HttpClients::Paymentology / Postilion / Ebc</td><td>Component</td><td>rest-client wrappers</td><td>Make HTTP calls and persist a per-CMS log row for every request.</td></tr>
+      <tr><td>Primary DB (logs)</td><td>Data store</td><td>PostgreSQL</td><td>Stores <code>paymentology_log</code> / <code>postilion_log</code> / <code>ebc_log</code> entries.</td></tr>
+      <tr><td>Treasury DB</td><td>Data store</td><td>PostgreSQL (separate connection)</td><td>Treasury models written by adapters / common services.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>Rails API / Sidekiq</td><td>ProcessorMediator</td><td>Call <code>ProcessorMediator.for(:key, beneficiary).call</code></td><td>In-process Ruby</td></tr>
+      <tr><td>ProcessorMediator</td><td>Adapter (PTL / Postilion / EBC)</td><td>Resolves to one of three adapter classes by cms_marker</td><td>Ruby instantiation</td></tr>
+      <tr><td>Common Services</td><td>Adapters</td><td>Wraps adapter calls when interfaces diverge</td><td>Ruby</td></tr>
+      <tr><td>Adapter</td><td>HttpClient</td><td>Build request, serialize, log</td><td>Ruby</td></tr>
+      <tr><td>HttpClient</td><td>External CMS</td><td>HTTP call</td><td>HTTPS / JSON</td></tr>
+      <tr><td>HttpClients::Ebc</td><td>EBC via CDE Proxy</td><td>Constraint: never direct to EBC</td><td>HTTPS via CDE</td></tr>
+      <tr><td>HttpClients</td><td>Primary DB (logs)</td><td>Persist request/response audit row</td><td>SQL</td></tr>
+      <tr><td>Adapters / Common Services</td><td>Treasury DB</td><td>Treasury-side writes (e.g. fund flows)</td><td>SQL</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Same-shape services across CMSs.</strong> Adapters for the same service_key share initializer signature, so callers can swap implementations transparently.</li>
+    <li><strong>Per-CMS log table.</strong> Each HttpClient writes to its own log table; this preserves provider-specific schemas and avoids one giant logs table.</li>
+    <li><strong>EBC via CDE only.</strong> The HttpClients layer encodes this constraint — no adapter is allowed to bypass it.</li>
+    <li><strong>EBC mapping is partial.</strong> Several entries in <code>ProcessorMediator::MAPPING</code> still point at <code>Ebc::Base</code> as a TODO placeholder.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Common Services is shown as a single block; in practice it's a small folder (<code>app/services/common/</code>) — promote individual classes if they grow.</li>
+    <li>Treasury DB writes from this container are limited to fund-flow / suspense operations; treasury CRUD generally goes through Treasury Controllers.</li>
+  </ul>
+</div>
+</body>
+</html>

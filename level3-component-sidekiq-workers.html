@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 3: Sidekiq Workers Components</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  .clickable rect, .clickable ellipse { transition: opacity 0.15s ease; cursor: pointer; }
+  .clickable:hover rect, .clickable:hover ellipse { opacity: 0.85; }
+  .clickable:hover text.node-name { text-decoration: underline; }
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <strong>Component (Sidekiq Workers)</strong> &gt; Code</div>
+  <a class="back" href="level2-container.html">← Back to Container</a>
+  <h1>C4 Level 3 — Components inside Sidekiq Workers</h1>
+  <div class="subtitle">Job families that run asynchronously and what they read/write.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1320 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sidekiq Components Diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+        <linearGradient id="cylTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0d4f8f" /><stop offset="1" stop-color="#1168BD" />
+        </linearGradient>
+      </defs>
+
+      <!-- Boundary -->
+      <rect x="40" y="60" width="1240" height="640" rx="14" fill="none" stroke="#1168BD" stroke-width="2" stroke-dasharray="6 4" />
+      <text x="60" y="85" font-size="14" fill="#1168BD" font-weight="700">Sidekiq Workers container</text>
+
+      <!-- Redis (top) -->
+      <g>
+        <ellipse cx="660" cy="30" rx="120" ry="14" fill="url(#cylTop)" />
+        <rect x="540" y="30" width="240" height="40" fill="#1168BD" />
+        <ellipse cx="660" cy="70" rx="120" ry="14" fill="#1168BD" />
+        <text x="660" y="50" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Redis [Sidekiq queues]</text>
+      </g>
+
+      <!-- ApplicationJob -->
+      <g>
+        <rect x="500" y="120" width="320" height="90" rx="10" fill="#1168BD" />
+        <text x="660" y="150" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ApplicationJob</text>
+        <text x="660" y="167" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: ActiveJob base]</text>
+        <text x="660" y="187" text-anchor="middle" fill="#fff" font-size="11">Common error handling, retries,</text>
+        <text x="660" y="201" text-anchor="middle" fill="#fff" font-size="11">tenancy context for all jobs.</text>
+      </g>
+
+      <!-- Job groups row 1 (clickable two) -->
+      <g class="clickable">
+        <a href="level4-code-disbursements-job.html">
+          <rect x="80" y="260" width="240" height="100" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="200" y="290" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Disbursements Jobs</text>
+          <text x="200" y="307" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+          <text x="200" y="327" text-anchor="middle" fill="#fff" font-size="11">Process salary cycles,</text>
+          <text x="200" y="341" text-anchor="middle" fill="#fff" font-size="11">per-employee execution.</text>
+        </a>
+      </g>
+
+      <g class="clickable">
+        <a href="level4-code-cards-job.html">
+          <rect x="360" y="260" width="240" height="100" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="480" y="290" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Cards Jobs</text>
+          <text x="480" y="307" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+          <text x="480" y="327" text-anchor="middle" fill="#fff" font-size="11">Issue / reissue / status</text>
+          <text x="480" y="341" text-anchor="middle" fill="#fff" font-size="11">checks via CMS adapters.</text>
+        </a>
+      </g>
+
+      <g>
+        <rect x="640" y="260" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="760" y="290" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Earned Wages Jobs</text>
+        <text x="760" y="307" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="760" y="327" text-anchor="middle" fill="#fff" font-size="11">EWA disbursement &amp;</text>
+        <text x="760" y="341" text-anchor="middle" fill="#fff" font-size="11">batch summary aggregation.</text>
+      </g>
+
+      <g>
+        <rect x="920" y="260" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="1040" y="290" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Payments / Transactions</text>
+        <text x="1040" y="307" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="1040" y="327" text-anchor="middle" fill="#fff" font-size="11">Transaction sync, balance</text>
+        <text x="1040" y="341" text-anchor="middle" fill="#fff" font-size="11">refresh, ledger postings.</text>
+      </g>
+
+      <!-- Job groups row 2 -->
+      <g>
+        <rect x="80" y="400" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="200" y="430" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Treasury Jobs</text>
+        <text x="200" y="447" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="200" y="467" text-anchor="middle" fill="#fff" font-size="11">Bank movements, suspense</text>
+        <text x="200" y="481" text-anchor="middle" fill="#fff" font-size="11">reconciliation.</text>
+      </g>
+
+      <g>
+        <rect x="360" y="400" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="480" y="430" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Email Exports Jobs</text>
+        <text x="480" y="447" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="480" y="467" text-anchor="middle" fill="#fff" font-size="11">Generate XLSX/CSV/PDF</text>
+        <text x="480" y="481" text-anchor="middle" fill="#fff" font-size="11">reports + S3 upload + email.</text>
+      </g>
+
+      <g>
+        <rect x="640" y="400" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="760" y="430" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Cron Jobs</text>
+        <text x="760" y="447" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: sidekiq-scheduler]</text>
+        <text x="760" y="467" text-anchor="middle" fill="#fff" font-size="11">Periodic syncs, daily</text>
+        <text x="760" y="481" text-anchor="middle" fill="#fff" font-size="11">summaries, housekeeping.</text>
+      </g>
+
+      <g>
+        <rect x="920" y="400" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="1040" y="430" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Analytics Jobs</text>
+        <text x="1040" y="447" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="1040" y="467" text-anchor="middle" fill="#fff" font-size="11">Aggregate dashboards,</text>
+        <text x="1040" y="481" text-anchor="middle" fill="#fff" font-size="11">reporting cubes.</text>
+      </g>
+
+      <!-- Mediator entry -->
+      <g>
+        <rect x="360" y="540" width="600" height="80" rx="10" fill="#1168BD" />
+        <text x="660" y="570" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ProcessorMediator entry</text>
+        <text x="660" y="587" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="660" y="607" text-anchor="middle" fill="#fff" font-size="11">Jobs call ProcessorMediator.for(:key, beneficiary).call for CMS work.</text>
+      </g>
+
+      <!-- DBs and S3 + Mailchimp on the sides -->
+      <g>
+        <ellipse cx="200" cy="660" rx="120" ry="14" fill="url(#cylTop)" />
+        <rect x="80" y="660" width="240" height="40" fill="#1168BD" />
+        <ellipse cx="200" cy="700" rx="120" ry="14" fill="#1168BD" />
+        <text x="200" y="685" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Primary DB</text>
+      </g>
+      <g>
+        <ellipse cx="1080" cy="660" rx="100" ry="14" fill="url(#cylTop)" />
+        <rect x="980" y="660" width="200" height="40" fill="#1168BD" />
+        <ellipse cx="1080" cy="700" rx="100" ry="14" fill="#1168BD" />
+        <text x="1080" y="685" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Treasury DB</text>
+      </g>
+
+      <!-- External -->
+      <g>
+        <rect x="40" y="160" width="160" height="60" rx="8" fill="#999999" />
+        <text x="120" y="185" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">AWS S3</text>
+        <text x="120" y="203" text-anchor="middle" fill="#eee" font-size="10">[External]</text>
+      </g>
+      <g>
+        <rect x="40" y="240" width="160" height="60" rx="8" fill="#999999" />
+        <text x="120" y="265" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Mailchimp</text>
+        <text x="120" y="283" text-anchor="middle" fill="#eee" font-size="10">[External]</text>
+      </g>
+      <g>
+        <rect x="40" y="320" width="160" height="60" rx="8" fill="#999999" />
+        <text x="120" y="345" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Bank SFTP</text>
+        <text x="120" y="363" text-anchor="middle" fill="#eee" font-size="10">[External]</text>
+      </g>
+
+      <!-- Arrows -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M660,84 L660,120" marker-end="url(#arrow)" />
+        <path d="M580,210 L240,260" marker-end="url(#arrow)" />
+        <path d="M620,210 L470,260" marker-end="url(#arrow)" />
+        <path d="M700,210 L760,260" marker-end="url(#arrow)" />
+        <path d="M740,210 L1010,260" marker-end="url(#arrow)" />
+        <path d="M580,210 L240,400" marker-end="url(#arrow)" />
+        <path d="M620,210 L470,400" marker-end="url(#arrow)" />
+        <path d="M700,210 L760,400" marker-end="url(#arrow)" />
+        <path d="M740,210 L1010,400" marker-end="url(#arrow)" />
+        <!-- jobs to mediator -->
+        <path d="M200,360 L460,540" marker-end="url(#arrow)" />
+        <path d="M480,360 L580,540" marker-end="url(#arrow)" />
+        <path d="M760,360 L720,540" marker-end="url(#arrow)" />
+        <path d="M1040,360 L900,540" marker-end="url(#arrow)" />
+        <path d="M200,500 L460,540" marker-end="url(#arrow)" />
+        <path d="M480,500 L580,540" marker-end="url(#arrow)" />
+        <path d="M760,500 L720,540" marker-end="url(#arrow)" />
+        <path d="M1040,500 L900,540" marker-end="url(#arrow)" />
+        <!-- jobs to DB -->
+        <path d="M200,500 L200,648" marker-end="url(#arrow)" />
+        <path d="M200,360 L200,648" marker-end="url(#arrow)" />
+        <path d="M1040,500 L1080,648" marker-end="url(#arrow)" />
+        <!-- to externals -->
+        <path d="M460,400 L200,200" marker-end="url(#arrow)" />
+        <path d="M460,400 L200,275" marker-end="url(#arrow)" />
+        <path d="M200,400 L200,355" marker-end="url(#arrow)" />
+      </g>
+
+      <!-- labels -->
+      <g font-size="11" fill="#333">
+        <text x="675" y="105">Pulls jobs</text>
+        <text x="660" y="245">extends</text>
+        <text x="650" y="528">Calls services [Ruby]</text>
+        <text x="220" y="640">[SQL]</text>
+        <text x="1100" y="640">[SQL]</text>
+        <text x="290" y="245">[S3 SDK]</text>
+        <text x="290" y="320">[HTTPS]</text>
+        <text x="220" y="370">[SFTP]</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Component</span>
+    <span><span class="swatch" style="background:#999999"></span>External System</span>
+    <span>Cylinder = data store</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Decomposes the Sidekiq Workers container into job families. Useful when adding a new background job: tells you where it belongs and which downstream resources it can touch.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ApplicationJob</td><td>Component</td><td>ActiveJob base class</td><td>Common retry policy, error handling, tenant scoping for all jobs.</td></tr>
+      <tr><td>Disbursements Jobs</td><td>Component</td><td>Sidekiq workers</td><td>Run salary cycles per company / per employee.</td></tr>
+      <tr><td>Cards Jobs</td><td>Component</td><td>Sidekiq workers</td><td>Issue / reissue / status checks via CMS adapters.</td></tr>
+      <tr><td>Earned Wages Jobs</td><td>Component</td><td>Sidekiq workers</td><td>EWA disbursements and batch summaries.</td></tr>
+      <tr><td>Payments / Transactions</td><td>Component</td><td>Sidekiq workers</td><td>Sync transactions, refresh balances, post ledger.</td></tr>
+      <tr><td>Treasury Jobs</td><td>Component</td><td>Sidekiq workers (treasury connection)</td><td>Bank movements, suspense reconciliation.</td></tr>
+      <tr><td>Email Exports Jobs</td><td>Component</td><td>caxlsx / Prawn / Sidekiq</td><td>Generate reports, upload to S3, email links.</td></tr>
+      <tr><td>Cron Jobs</td><td>Component</td><td>sidekiq-scheduler</td><td>Periodic housekeeping and aggregations.</td></tr>
+      <tr><td>Analytics Jobs</td><td>Component</td><td>Sidekiq</td><td>Build dashboards / reporting aggregates.</td></tr>
+      <tr><td>ProcessorMediator entry</td><td>Component</td><td>Plain Ruby</td><td>Jobs call this for CMS-bound work; never call adapters directly.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>Redis</td><td>ApplicationJob</td><td>Sidekiq pulls jobs off queues</td><td>Redis protocol</td></tr>
+      <tr><td>ApplicationJob</td><td>(All Job groups)</td><td>Inheritance for retry/error/tenancy</td><td>Ruby</td></tr>
+      <tr><td>Job groups</td><td>ProcessorMediator entry</td><td>CMS-bound work routes via mediator</td><td>Ruby</td></tr>
+      <tr><td>Job groups</td><td>Primary DB</td><td>Read/write domain rows</td><td>SQL</td></tr>
+      <tr><td>Treasury Jobs / ProcessorMediator</td><td>Treasury DB</td><td>Treasury-only writes</td><td>SQL</td></tr>
+      <tr><td>Email Exports Jobs</td><td>AWS S3</td><td>Upload generated files</td><td>AWS SDK</td></tr>
+      <tr><td>Email Exports Jobs</td><td>Mailchimp Transactional</td><td>Email recipients with download links</td><td>HTTPS</td></tr>
+      <tr><td>Treasury Jobs</td><td>Bank SFTP</td><td>Fetch / submit settlement files</td><td>SFTP</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>One ApplicationJob.</strong> All workers inherit common retry / error policy from a single base; new workers must extend it, not <code>Sidekiq::Worker</code> directly, to inherit tenancy scoping.</li>
+    <li><strong>Cron is opinionated.</strong> Schedules live in <code>config/sidekiq.yml</code> via <code>sidekiq-scheduler</code> — not in cron.d or k8s CronJobs — to keep them code-reviewed.</li>
+    <li><strong>Heavy export work is async.</strong> Controllers never block on report generation; they enqueue an Email Exports Job.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Job groupings reflect <code>app/jobs/</code> folder structure; minor jobs are folded into the closest family.</li>
+    <li>Single Sidekiq process per environment is assumed; if queues are split into dedicated workers (e.g. a separate "exports" worker), that becomes a new container in Level 2.</li>
+  </ul>
+</div>
+</body>
+</html>

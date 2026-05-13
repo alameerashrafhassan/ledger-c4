@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 1: System Context</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  h3 { margin-top: 22px; font-size: 16px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  .node a { text-decoration: none; }
+  .clickable rect, .clickable ellipse { transition: opacity 0.15s ease; cursor: pointer; }
+  .clickable:hover rect, .clickable:hover ellipse { opacity: 0.85; }
+  .clickable:hover text.node-name { text-decoration: underline; }
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 10px 14px; margin: 12px 0; font-size: 13px; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><strong>Context</strong> &gt; <a href="level2-container.html">Container</a> &gt; Component &gt; Code</div>
+  <h1>C4 Level 1 — System Context: PayEngine 2.0</h1>
+  <div class="subtitle">How PayEngine 2.0 fits in the dopay/Liberty card-payments landscape: who uses it and what it talks to.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1320 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System Context Diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+      </defs>
+
+      <!-- Persons (top row) -->
+      <g class="node">
+        <rect x="60" y="40" width="220" height="110" rx="10" fill="#08427B" />
+        <text x="170" y="72" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Corporate Admin</text>
+        <text x="170" y="92" text-anchor="middle" fill="#cfdcef" font-size="11">[Person]</text>
+        <text x="170" y="115" text-anchor="middle" fill="#fff" font-size="11">Manages companies, disbursements,</text>
+        <text x="170" y="130" text-anchor="middle" fill="#fff" font-size="11">earned-wage policies and approvals.</text>
+      </g>
+
+      <g class="node">
+        <rect x="540" y="40" width="240" height="110" rx="10" fill="#08427B" />
+        <text x="660" y="72" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Employee / Cardholder</text>
+        <text x="660" y="92" text-anchor="middle" fill="#cfdcef" font-size="11">[Person]</text>
+        <text x="660" y="115" text-anchor="middle" fill="#fff" font-size="11">Receives wages and uses the</text>
+        <text x="660" y="130" text-anchor="middle" fill="#fff" font-size="11">prepaid card via the Liberty app.</text>
+      </g>
+
+      <g class="node">
+        <rect x="1040" y="40" width="220" height="110" rx="10" fill="#08427B" />
+        <text x="1150" y="72" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Operations / Treasury</text>
+        <text x="1150" y="92" text-anchor="middle" fill="#cfdcef" font-size="11">[Person]</text>
+        <text x="1150" y="115" text-anchor="middle" fill="#fff" font-size="11">Handles chargebacks, suspense</text>
+        <text x="1150" y="130" text-anchor="middle" fill="#fff" font-size="11">accounts, fund flow reconciliation.</text>
+      </g>
+
+      <!-- Liberty Frontend (External System on top center-ish) -->
+      <g class="node">
+        <rect x="540" y="200" width="240" height="100" rx="10" fill="#999999" />
+        <text x="660" y="232" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Liberty / dopay Web &amp; Mobile</text>
+        <text x="660" y="250" text-anchor="middle" fill="#eee" font-size="11">[External System]</text>
+        <text x="660" y="272" text-anchor="middle" fill="#fff" font-size="11">Customer-facing apps that consume</text>
+        <text x="660" y="287" text-anchor="middle" fill="#fff" font-size="11">PayEngine's REST API.</text>
+      </g>
+
+      <!-- Central System: PayEngine 2.0 (clickable) -->
+      <g class="node clickable">
+        <a href="level2-container.html">
+          <rect x="500" y="370" width="320" height="140" rx="12" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="660" y="410" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">PayEngine 2.0</text>
+          <text x="660" y="430" text-anchor="middle" fill="#cfdcef" font-size="12">[Internal System]</text>
+          <text x="660" y="455" text-anchor="middle" fill="#fff" font-size="12">Rails 7.2 API processing cards, disbursements,</text>
+          <text x="660" y="472" text-anchor="middle" fill="#fff" font-size="12">earned wages, treasury and fund flows.</text>
+          <text x="660" y="495" text-anchor="middle" fill="#a8c5e6" font-size="11" font-style="italic">Click to open Container view →</text>
+        </a>
+      </g>
+
+      <!-- Auth Provider (left) -->
+      <g class="node">
+        <rect x="60" y="370" width="220" height="100" rx="10" fill="#999999" />
+        <text x="170" y="402" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">dopay-conductor</text>
+        <text x="170" y="420" text-anchor="middle" fill="#eee" font-size="11">[External System]</text>
+        <text x="170" y="442" text-anchor="middle" fill="#fff" font-size="11">Identity / token issuance &amp;</text>
+        <text x="170" y="457" text-anchor="middle" fill="#fff" font-size="11">payment-provider auth gem.</text>
+      </g>
+
+      <!-- AWS S3 (left-bottom) -->
+      <g class="node">
+        <rect x="60" y="540" width="220" height="100" rx="10" fill="#999999" />
+        <text x="170" y="572" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">AWS S3</text>
+        <text x="170" y="590" text-anchor="middle" fill="#eee" font-size="11">[External System]</text>
+        <text x="170" y="612" text-anchor="middle" fill="#fff" font-size="11">Stores exports, statements,</text>
+        <text x="170" y="627" text-anchor="middle" fill="#fff" font-size="11">reports and DB backups.</text>
+      </g>
+
+      <!-- Paymentology (right top) -->
+      <g class="node">
+        <rect x="1040" y="220" width="220" height="100" rx="10" fill="#999999" />
+        <text x="1150" y="252" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Paymentology (PTL)</text>
+        <text x="1150" y="270" text-anchor="middle" fill="#eee" font-size="11">[External CMS]</text>
+        <text x="1150" y="292" text-anchor="middle" fill="#fff" font-size="11">Card management system for</text>
+        <text x="1150" y="307" text-anchor="middle" fill="#fff" font-size="11">most prepaid card programs.</text>
+      </g>
+
+      <!-- Postilion (right middle) -->
+      <g class="node">
+        <rect x="1040" y="370" width="220" height="100" rx="10" fill="#999999" />
+        <text x="1150" y="402" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ACI / Postilion</text>
+        <text x="1150" y="420" text-anchor="middle" fill="#eee" font-size="11">[External CMS]</text>
+        <text x="1150" y="442" text-anchor="middle" fill="#fff" font-size="11">Legacy on-prem CMS for one</text>
+        <text x="1150" y="457" text-anchor="middle" fill="#fff" font-size="11">tenant's card program.</text>
+      </g>
+
+      <!-- EBC via CDE Proxy (right bottom) -->
+      <g class="node">
+        <rect x="1040" y="520" width="220" height="120" rx="10" fill="#999999" />
+        <text x="1150" y="552" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">EBC (via CDE Proxy)</text>
+        <text x="1150" y="570" text-anchor="middle" fill="#eee" font-size="11">[External CMS]</text>
+        <text x="1150" y="592" text-anchor="middle" fill="#fff" font-size="11">Nameless bulk-issued card</text>
+        <text x="1150" y="607" text-anchor="middle" fill="#fff" font-size="11">program; reached only through</text>
+        <text x="1150" y="622" text-anchor="middle" fill="#fff" font-size="11">the CDE proxy application.</text>
+      </g>
+
+      <!-- Email service (bottom center-left) -->
+      <g class="node">
+        <rect x="320" y="630" width="240" height="100" rx="10" fill="#999999" />
+        <text x="440" y="662" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Mailchimp Transactional</text>
+        <text x="440" y="680" text-anchor="middle" fill="#eee" font-size="11">[External System]</text>
+        <text x="440" y="702" text-anchor="middle" fill="#fff" font-size="11">Sends notifications, exports</text>
+        <text x="440" y="717" text-anchor="middle" fill="#fff" font-size="11">and operational emails.</text>
+      </g>
+
+      <!-- SFTP / Bank file drops (bottom center-right) -->
+      <g class="node">
+        <rect x="760" y="630" width="240" height="100" rx="10" fill="#999999" />
+        <text x="880" y="662" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Bank SFTP &amp; Files</text>
+        <text x="880" y="680" text-anchor="middle" fill="#eee" font-size="11">[External System]</text>
+        <text x="880" y="702" text-anchor="middle" fill="#fff" font-size="11">Settlement / reconciliation</text>
+        <text x="880" y="717" text-anchor="middle" fill="#fff" font-size="11">files exchanged via SFTP.</text>
+      </g>
+
+      <!-- Arrows -->
+      <!-- Admin -> PayEngine (via Liberty) -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M170,150 C 170,250 470,330 540,370" marker-end="url(#arrow)" />
+        <path d="M660,150 L660,200" marker-end="url(#arrow)" />
+        <path d="M1150,150 C 1150,260 880,340 820,380" marker-end="url(#arrow)" />
+        <path d="M660,300 L660,370" marker-end="url(#arrow)" />
+        <path d="M280,420 L500,430" marker-end="url(#arrow)" />
+        <path d="M280,580 C 380,560 460,520 510,500" marker-end="url(#arrow)" />
+        <path d="M820,420 L1040,270" marker-end="url(#arrow)" />
+        <path d="M820,440 L1040,420" marker-end="url(#arrow)" />
+        <path d="M820,470 L1040,560" marker-end="url(#arrow)" />
+        <path d="M620,510 L500,630" marker-end="url(#arrow)" />
+        <path d="M720,510 L820,630" marker-end="url(#arrow)" />
+      </g>
+
+      <!-- Edge labels -->
+      <g font-size="11" fill="#333">
+        <text x="320" y="245" transform="rotate(-30 320 245)">Operates UI [HTTPS]</text>
+        <text x="675" y="180">Uses [HTTPS]</text>
+        <text x="900" y="245" transform="rotate(28 900 245)">Operates UI [HTTPS]</text>
+        <text x="540" y="345">REST/JSON [HTTPS]</text>
+        <text x="295" y="410">Auth tokens [HTTPS]</text>
+        <text x="290" y="555">Stores files [S3 SDK]</text>
+        <text x="900" y="350" transform="rotate(-25 900 350)">Cards/Tx [HTTPS]</text>
+        <text x="900" y="425">Cards/Tx [HTTPS]</text>
+        <text x="900" y="510" transform="rotate(28 900 510)">via CDE [HTTPS]</text>
+        <text x="540" y="595">Sends mail [HTTPS]</text>
+        <text x="780" y="595">Reads/writes [SFTP]</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#08427B"></span>Person</span>
+    <span><span class="swatch" style="background:#1168BD"></span>Internal System (PayEngine)</span>
+    <span><span class="swatch" style="background:#999999"></span>External System</span>
+    <span>↦ Arrows: relationship + protocol</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>This level shows <strong>PayEngine 2.0</strong> as a single black box and the people and external systems it interacts with. It is the highest-level view, intended for stakeholders who need to understand <em>scope</em> and <em>integrations</em>, not internals.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Corporate Admin</td><td>Person</td><td>—</td><td>Configures companies, runs disbursements, approves earned-wage requests.</td></tr>
+      <tr><td>Employee / Cardholder</td><td>Person</td><td>—</td><td>Receives salary, withdraws earned wages, uses prepaid card.</td></tr>
+      <tr><td>Operations / Treasury</td><td>Person</td><td>—</td><td>Manages chargebacks, suspense accounts, reconciles fund flows.</td></tr>
+      <tr><td>PayEngine 2.0</td><td>Internal System</td><td>Ruby 3.3.6, Rails 7.2 API, Sidekiq 6, PostgreSQL, Redis</td><td>Issues cards, processes disbursements, manages treasury and fund flows.</td></tr>
+      <tr><td>Liberty / dopay Web &amp; Mobile</td><td>External System</td><td>JS / native</td><td>Front-ends that consume PayEngine's REST API.</td></tr>
+      <tr><td>dopay-conductor</td><td>External System</td><td>Ruby gem + service</td><td>Authenticates requests and identifies payment provider tenant.</td></tr>
+      <tr><td>Paymentology (PTL)</td><td>External CMS</td><td>HTTPS / JSON</td><td>Card management, transactions, balances for most card programs.</td></tr>
+      <tr><td>ACI / Postilion</td><td>External CMS</td><td>HTTPS / proprietary</td><td>Legacy CMS for one tenant's program.</td></tr>
+      <tr><td>EBC (via CDE Proxy)</td><td>External CMS</td><td>HTTPS / JSON via CDE proxy</td><td>Nameless bulk-issued cards; only reached through the CDE proxy app.</td></tr>
+      <tr><td>AWS S3</td><td>External System</td><td>AWS SDK</td><td>Stores exports, statements, PDF reports, DB backups.</td></tr>
+      <tr><td>Mailchimp Transactional</td><td>External System</td><td>HTTPS</td><td>Sends operational and notification emails.</td></tr>
+      <tr><td>Bank SFTP &amp; Files</td><td>External System</td><td>SFTP</td><td>Exchanges settlement and reconciliation files.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>Corporate Admin</td><td>Liberty Web &amp; Mobile</td><td>Operates the admin UI</td><td>HTTPS</td></tr>
+      <tr><td>Employee / Cardholder</td><td>Liberty Web &amp; Mobile</td><td>Uses the cardholder app</td><td>HTTPS</td></tr>
+      <tr><td>Operations / Treasury</td><td>Liberty Web &amp; Mobile</td><td>Operates ops/treasury back office</td><td>HTTPS</td></tr>
+      <tr><td>Liberty Web &amp; Mobile</td><td>PayEngine 2.0</td><td>Reads / writes domain data</td><td>REST/JSON over HTTPS</td></tr>
+      <tr><td>PayEngine 2.0</td><td>dopay-conductor</td><td>Validates auth tokens, scopes payment provider</td><td>HTTPS / gem</td></tr>
+      <tr><td>PayEngine 2.0</td><td>Paymentology</td><td>Issues cards, fetches balances and transactions</td><td>HTTPS / JSON</td></tr>
+      <tr><td>PayEngine 2.0</td><td>ACI / Postilion</td><td>Same operations, different CMS</td><td>HTTPS</td></tr>
+      <tr><td>PayEngine 2.0</td><td>EBC via CDE Proxy</td><td>Bulk nameless card lifecycle, balances</td><td>HTTPS via CDE</td></tr>
+      <tr><td>PayEngine 2.0</td><td>AWS S3</td><td>Stores exports, statements, backups</td><td>AWS SDK / HTTPS</td></tr>
+      <tr><td>PayEngine 2.0</td><td>Mailchimp Transactional</td><td>Sends emails</td><td>HTTPS</td></tr>
+      <tr><td>PayEngine 2.0</td><td>Bank SFTP &amp; Files</td><td>Exchanges settlement files</td><td>SFTP</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Three CMS providers behind one façade.</strong> Persons and front-ends never address PTL/Postilion/EBC directly; PayEngine routes via <code>ProcessorMediator</code> using each beneficiary's <code>cms_marker</code>.</li>
+    <li><strong>EBC is not addressed directly.</strong> All EBC traffic must go through the CDE proxy application — drawn explicitly so this constraint isn't lost.</li>
+    <li><strong>Liberty front-ends are external</strong> to the PayEngine system boundary; PayEngine ships an API only, not UI.</li>
+    <li><strong>Auth is a separate system</strong> (<code>dopay-conductor</code>), not embedded — the same gem powers other dopay services.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>The Liberty web/mobile apps are the only first-party callers of the API today; partner direct integration would warrant adding a node.</li>
+    <li>Mailchimp Transactional is the sole transactional email provider in use.</li>
+    <li>Bank file exchange is shown as a single external node; in reality there are multiple banks per tenant.</li>
+  </ul>
+</div>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 4: ApplicationController Code</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  text { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  text.title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <a href="level3-component-rails-api.html">Component</a> &gt; <strong>Code (ApplicationController)</strong></div>
+  <a class="back" href="level3-component-rails-api.html">← Back to Rails API Components</a>
+  <h1>C4 Level 4 — Code: ApplicationController</h1>
+  <div class="subtitle">Class diagram for the controller base that enforces auth and tenant scoping for every request.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ApplicationController class diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+      </defs>
+
+      <!-- ActionController::API base -->
+      <g>
+        <rect x="40" y="40" width="280" height="100" rx="8" fill="#999999" />
+        <text class="title" x="180" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ActionController::API</text>
+        <text x="180" y="86" text-anchor="middle" fill="#eee" font-size="11">[External class]</text>
+        <text x="180" y="108" text-anchor="middle" fill="#fff" font-size="11">Rails 7.2 base for API-only apps.</text>
+      </g>
+
+      <!-- ApplicationController -->
+      <g>
+        <rect x="440" y="40" width="380" height="280" rx="8" fill="#1168BD" />
+        <text class="title" x="630" y="68" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">ApplicationController</text>
+        <text x="630" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <line x1="450" y1="98" x2="810" y2="98" stroke="#cfdcef" />
+        <text x="460" y="120" fill="#fff" font-size="12">+ before_action :authenticate</text>
+        <text x="460" y="140" fill="#fff" font-size="12">+ before_action :check_payment_provider!</text>
+        <text x="460" y="160" fill="#fff" font-size="12">+ rescue_from Pundit::NotAuthorizedError</text>
+        <text x="460" y="180" fill="#fff" font-size="12">+ rescue_from ActiveRecord::RecordNotFound</text>
+        <line x1="450" y1="195" x2="810" y2="195" stroke="#cfdcef" />
+        <text x="460" y="215" fill="#fff" font-size="12">- authenticate</text>
+        <text x="460" y="235" fill="#fff" font-size="12">- check_payment_provider!</text>
+        <text x="460" y="255" fill="#fff" font-size="12">- current_user</text>
+        <text x="460" y="275" fill="#fff" font-size="12">- current_payment_provider</text>
+        <text x="460" y="295" fill="#fff" font-size="12">- pundit_user</text>
+      </g>
+
+      <!-- Auth gem -->
+      <g>
+        <rect x="900" y="40" width="260" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="1030" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Dopay::Conductor::Auth</text>
+        <text x="1030" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class: gem]</text>
+        <text x="1030" y="108" text-anchor="middle" fill="#fff" font-size="11">.validate(token) → user</text>
+        <text x="1030" y="124" text-anchor="middle" fill="#fff" font-size="11">.resolve_provider(user) → tenant</text>
+      </g>
+
+      <!-- Pundit -->
+      <g>
+        <rect x="900" y="200" width="260" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="1030" y="228" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Pundit</text>
+        <text x="1030" y="244" text-anchor="middle" fill="#cfdcef" font-size="11">[Class: gem mixin]</text>
+        <text x="1030" y="268" text-anchor="middle" fill="#fff" font-size="11">authorize(record, action)</text>
+        <text x="1030" y="284" text-anchor="middle" fill="#fff" font-size="11">policy_scope(scope)</text>
+      </g>
+
+      <!-- Subclasses (sample) -->
+      <g>
+        <rect x="240" y="380" width="200" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="340" y="408" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">CardsController</text>
+        <text x="340" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Subclass]</text>
+        <text x="340" y="446" text-anchor="middle" fill="#fff" font-size="11">index, show, create, update</text>
+      </g>
+      <g>
+        <rect x="500" y="380" width="220" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="610" y="408" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">DisbursementsController</text>
+        <text x="610" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Subclass]</text>
+        <text x="610" y="446" text-anchor="middle" fill="#fff" font-size="11">create, submit, approve</text>
+      </g>
+      <g>
+        <rect x="780" y="380" width="220" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="890" y="408" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">EarnedWagesController</text>
+        <text x="890" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Subclass]</text>
+        <text x="890" y="446" text-anchor="middle" fill="#fff" font-size="11">index, request, approve</text>
+      </g>
+
+      <!-- Inheritance arrows (open triangle) -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M320,90 L440,90" marker-end="url(#arrow)" />
+        <path d="M340,380 L500,320" marker-end="url(#arrow)" />
+        <path d="M610,380 L630,320" marker-end="url(#arrow)" />
+        <path d="M890,380 L760,320" marker-end="url(#arrow)" />
+        <!-- delegations -->
+        <path d="M820,140 L900,90" marker-end="url(#arrow)" />
+        <path d="M820,250 L900,250" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="350" y="80">inherits</text>
+        <text x="335" y="365">inherits</text>
+        <text x="610" y="365">inherits</text>
+        <text x="800" y="365">inherits</text>
+        <text x="830" y="125">delegates</text>
+        <text x="830" y="240">delegates</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Internal class</span>
+    <span><span class="swatch" style="background:#999999"></span>External class</span>
+    <span>Arrow = inherits / delegates to</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Shows the class structure of <code>ApplicationController</code>: what it inherits, what callbacks it sets, and what it delegates auth/authorization to. Concrete controllers inherit from this and inherit the auth contract for free.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ActionController::API</td><td>Class (external)</td><td>Rails 7.2</td><td>Provides API-only base behaviour.</td></tr>
+      <tr><td>ApplicationController</td><td>Class</td><td>Ruby / Rails</td><td>Adds authenticate + check_payment_provider!, common rescue handlers.</td></tr>
+      <tr><td>Dopay::Conductor::Auth</td><td>Class</td><td>dopay-conductor gem</td><td>Token validation and payment-provider resolution.</td></tr>
+      <tr><td>Pundit</td><td>Class</td><td>Pundit gem</td><td>Authorization mixins (authorize / policy_scope).</td></tr>
+      <tr><td>CardsController, DisbursementsController, EarnedWagesController, …</td><td>Subclass</td><td>Rails</td><td>Resource controllers; inherit auth/policy infrastructure.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>ApplicationController</td><td>ActionController::API</td><td>Inherits</td><td>Ruby inheritance</td></tr>
+      <tr><td>ApplicationController</td><td>Dopay::Conductor::Auth</td><td>Delegates token validation / tenant resolution</td><td>Ruby call</td></tr>
+      <tr><td>ApplicationController</td><td>Pundit</td><td>Mixed in to authorize requests</td><td>Module include</td></tr>
+      <tr><td>CardsController / DisbursementsController / EarnedWagesController</td><td>ApplicationController</td><td>Inherit before-actions and rescue handlers</td><td>Ruby inheritance</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Auth is not opt-in.</strong> Both before-actions are declared on the base; controllers that want to skip them must do so explicitly and that should be a code-review red flag.</li>
+    <li><strong>Pundit at controller level.</strong> Authorization is enforced inside actions via <code>authorize</code> / <code>policy_scope</code>; missing an authorize call in a write action is a bug.</li>
+    <li><strong>Errors handled centrally.</strong> Pundit / RecordNotFound errors translate to 403 / 404 through rescue_from at this layer.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>The exact gem class name is shown for orientation; the actual class lives in the dopay-conductor gem.</li>
+    <li>Rescue handlers shown are illustrative; the codebase may include additional ones (e.g., parameter parsing errors).</li>
+  </ul>
+</div>
+</body>
+</html>

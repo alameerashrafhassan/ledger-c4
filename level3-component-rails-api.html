@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 3: Rails API Components</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  .clickable rect, .clickable ellipse { transition: opacity 0.15s ease; cursor: pointer; }
+  .clickable:hover rect, .clickable:hover ellipse { opacity: 0.85; }
+  .clickable:hover text.node-name { text-decoration: underline; }
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <strong>Component (Rails API)</strong> &gt; Code</div>
+  <a class="back" href="level2-container.html">← Back to Container</a>
+  <h1>C4 Level 3 — Components inside the Rails API</h1>
+  <div class="subtitle">Controllers, the auth/policy layer, and supporting service entry points that make up the Rails API container.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1320 880" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rails API Component Diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+        <linearGradient id="cylTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0d4f8f" /><stop offset="1" stop-color="#1168BD" />
+        </linearGradient>
+      </defs>
+
+      <!-- Container boundary -->
+      <rect x="40" y="60" width="1240" height="700" rx="14" fill="none" stroke="#1168BD" stroke-width="2" stroke-dasharray="6 4" />
+      <text x="60" y="85" font-size="14" fill="#1168BD" font-weight="700">Rails API container</text>
+
+      <!-- External: Liberty (top) -->
+      <g>
+        <rect x="540" y="0" width="240" height="50" rx="8" fill="#999999" />
+        <text x="660" y="22" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Liberty Web &amp; Mobile</text>
+        <text x="660" y="40" text-anchor="middle" fill="#eee" font-size="11">[External System]</text>
+      </g>
+
+      <!-- ApplicationController (clickable) -->
+      <g class="clickable">
+        <a href="level4-code-application-controller.html">
+          <rect x="500" y="120" width="320" height="100" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="660" y="150" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ApplicationController</text>
+          <text x="660" y="167" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: Ruby class]</text>
+          <text x="660" y="187" text-anchor="middle" fill="#fff" font-size="11">Authenticates request, sets payment</text>
+          <text x="660" y="201" text-anchor="middle" fill="#fff" font-size="11">provider, applies Pundit policies.</text>
+        </a>
+      </g>
+
+      <!-- Pundit Policies -->
+      <g>
+        <rect x="900" y="120" width="220" height="100" rx="10" fill="#1168BD" />
+        <text x="1010" y="150" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Pundit Policies</text>
+        <text x="1010" y="167" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: app/policies]</text>
+        <text x="1010" y="187" text-anchor="middle" fill="#fff" font-size="11">Per-resource authorization</text>
+        <text x="1010" y="201" text-anchor="middle" fill="#fff" font-size="11">(scope + action checks).</text>
+      </g>
+
+      <!-- Auth gem -->
+      <g>
+        <rect x="200" y="120" width="220" height="100" rx="10" fill="#1168BD" />
+        <text x="310" y="150" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Auth Gem Adapter</text>
+        <text x="310" y="167" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: dopay-conductor]</text>
+        <text x="310" y="187" text-anchor="middle" fill="#fff" font-size="11">Token validation &amp; payment</text>
+        <text x="310" y="201" text-anchor="middle" fill="#fff" font-size="11">provider resolution.</text>
+      </g>
+
+      <!-- Controllers row 1 -->
+      <g class="clickable">
+        <a href="level4-code-cards-controller.html">
+          <rect x="80" y="280" width="240" height="100" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="200" y="310" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Cards Controllers</text>
+          <text x="200" y="327" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+          <text x="200" y="347" text-anchor="middle" fill="#fff" font-size="11">PIN/PAN issuance, reissue,</text>
+          <text x="200" y="361" text-anchor="middle" fill="#fff" font-size="11">block, history, balances.</text>
+        </a>
+      </g>
+
+      <g class="clickable">
+        <a href="level4-code-disbursements-controller.html">
+          <rect x="360" y="280" width="240" height="100" rx="10" fill="#1168BD" stroke="#0d4f8f" stroke-width="2" />
+          <text class="node-name" x="480" y="310" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Disbursements Controllers</text>
+          <text x="480" y="327" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+          <text x="480" y="347" text-anchor="middle" fill="#fff" font-size="11">Draft, submit, approve,</text>
+          <text x="480" y="361" text-anchor="middle" fill="#fff" font-size="11">execute salary cycles.</text>
+        </a>
+      </g>
+
+      <g>
+        <rect x="640" y="280" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="760" y="310" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Earned Wages Controllers</text>
+        <text x="760" y="327" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="760" y="347" text-anchor="middle" fill="#fff" font-size="11">Withdrawal requests,</text>
+        <text x="760" y="361" text-anchor="middle" fill="#fff" font-size="11">policy &amp; batch summaries.</text>
+      </g>
+
+      <g>
+        <rect x="920" y="280" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="1040" y="310" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Companies / Employees</text>
+        <text x="1040" y="327" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="1040" y="347" text-anchor="middle" fill="#fff" font-size="11">Tenant data, employee CRUD,</text>
+        <text x="1040" y="361" text-anchor="middle" fill="#fff" font-size="11">company employees mapping.</text>
+      </g>
+
+      <!-- Controllers row 2 -->
+      <g>
+        <rect x="80" y="420" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="200" y="450" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Treasury Controllers</text>
+        <text x="200" y="467" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="200" y="487" text-anchor="middle" fill="#fff" font-size="11">Bank accounts, suspense,</text>
+        <text x="200" y="501" text-anchor="middle" fill="#fff" font-size="11">transaction requests.</text>
+      </g>
+
+      <g>
+        <rect x="360" y="420" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="480" y="450" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Chargebacks Controller</text>
+        <text x="480" y="467" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="480" y="487" text-anchor="middle" fill="#fff" font-size="11">Lifecycle of chargeback</text>
+        <text x="480" y="501" text-anchor="middle" fill="#fff" font-size="11">cases &amp; evidence uploads.</text>
+      </g>
+
+      <g>
+        <rect x="640" y="420" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="760" y="450" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Transfers Controller</text>
+        <text x="760" y="467" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="760" y="487" text-anchor="middle" fill="#fff" font-size="11">Wallet-to-wallet transfers,</text>
+        <text x="760" y="501" text-anchor="middle" fill="#fff" font-size="11">cashbacks dispatch.</text>
+      </g>
+
+      <g>
+        <rect x="920" y="420" width="240" height="100" rx="10" fill="#1168BD" />
+        <text x="1040" y="450" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Email Exports / IVR</text>
+        <text x="1040" y="467" text-anchor="middle" fill="#cfdcef" font-size="11">[Component]</text>
+        <text x="1040" y="487" text-anchor="middle" fill="#fff" font-size="11">Async report generation,</text>
+        <text x="1040" y="501" text-anchor="middle" fill="#fff" font-size="11">IVR callbacks.</text>
+      </g>
+
+      <!-- Service / mediator entry -->
+      <g>
+        <rect x="360" y="560" width="600" height="80" rx="10" fill="#1168BD" />
+        <text x="660" y="590" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Domain Services + ProcessorMediator entry</text>
+        <text x="660" y="607" text-anchor="middle" fill="#cfdcef" font-size="11">[Component: app/services]</text>
+        <text x="660" y="627" text-anchor="middle" fill="#fff" font-size="11">Controllers call domain services and ProcessorMediator.for(:key, beneficiary).call.</text>
+      </g>
+
+      <!-- DB and Redis -->
+      <g>
+        <ellipse cx="200" cy="700" rx="120" ry="14" fill="url(#cylTop)" />
+        <rect x="80" y="700" width="240" height="50" fill="#1168BD" />
+        <ellipse cx="200" cy="750" rx="120" ry="14" fill="#1168BD" />
+        <text x="200" y="725" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Primary DB [PostgreSQL]</text>
+      </g>
+      <g>
+        <ellipse cx="1080" cy="700" rx="100" ry="14" fill="url(#cylTop)" />
+        <rect x="980" y="700" width="200" height="50" fill="#1168BD" />
+        <ellipse cx="1080" cy="750" rx="100" ry="14" fill="#1168BD" />
+        <text x="1080" y="725" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Redis [queues + cache]</text>
+      </g>
+
+      <!-- Arrows -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M660,50 L660,120" marker-end="url(#arrow)" />
+        <path d="M500,170 L420,170" marker-end="url(#arrow)" />
+        <path d="M820,170 L900,170" marker-end="url(#arrow)" />
+        <!-- AppController to controllers -->
+        <path d="M560,220 L240,280" marker-end="url(#arrow)" />
+        <path d="M620,220 L470,280" marker-end="url(#arrow)" />
+        <path d="M700,220 L760,280" marker-end="url(#arrow)" />
+        <path d="M740,220 L1010,280" marker-end="url(#arrow)" />
+        <path d="M580,220 L240,420" marker-end="url(#arrow)" />
+        <path d="M620,220 L470,420" marker-end="url(#arrow)" />
+        <path d="M700,220 L760,420" marker-end="url(#arrow)" />
+        <path d="M740,220 L1010,420" marker-end="url(#arrow)" />
+        <!-- Controllers -> services -->
+        <path d="M200,380 L460,560" marker-end="url(#arrow)" />
+        <path d="M480,380 L580,560" marker-end="url(#arrow)" />
+        <path d="M760,380 L720,560" marker-end="url(#arrow)" />
+        <path d="M1040,380 L900,560" marker-end="url(#arrow)" />
+        <path d="M200,520 L460,560" marker-end="url(#arrow)" />
+        <path d="M480,520 L580,560" marker-end="url(#arrow)" />
+        <path d="M760,520 L720,560" marker-end="url(#arrow)" />
+        <path d="M1040,520 L900,560" marker-end="url(#arrow)" />
+        <!-- Services -> DB and Redis -->
+        <path d="M460,640 L240,690" marker-end="url(#arrow)" />
+        <path d="M860,640 L1060,690" marker-end="url(#arrow)" />
+      </g>
+
+      <!-- Edge labels -->
+      <g font-size="11" fill="#333">
+        <text x="675" y="100">REST/JSON [HTTPS]</text>
+        <text x="430" y="160">authenticate</text>
+        <text x="825" y="160">authorize</text>
+        <text x="650" y="545">Calls services [Ruby]</text>
+        <text x="270" y="685">ActiveRecord [SQL]</text>
+        <text x="940" y="685">Enqueue [Redis]</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Component</span>
+    <span><span class="swatch" style="background:#999999"></span>External System</span>
+    <span>Cylinder = data store</span>
+    <span>Dashed border = container boundary</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Decomposes the Rails API container into its main components: the controller layer (one block per major resource group), the auth/authorization layer, and the service entry into <code>ProcessorMediator</code>. Useful for engineers picking up a feature and needing to know where the seam lives.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ApplicationController</td><td>Component</td><td>Ruby / Rails 7.2</td><td>Before-action authentication and check_payment_provider!; common error handling.</td></tr>
+      <tr><td>Auth Gem Adapter</td><td>Component</td><td>dopay-auxiliary / dopay-conductor</td><td>Wraps gem calls for token validation and payment-provider resolution.</td></tr>
+      <tr><td>Pundit Policies</td><td>Component</td><td>Pundit</td><td>Per-resource scope &amp; action authorization.</td></tr>
+      <tr><td>Cards Controllers</td><td>Component</td><td>Rails</td><td>Card lifecycle endpoints (issue, reissue, history, block).</td></tr>
+      <tr><td>Disbursements Controllers</td><td>Component</td><td>Rails</td><td>Salary cycle endpoints (draft → submit → approve).</td></tr>
+      <tr><td>Earned Wages Controllers</td><td>Component</td><td>Rails</td><td>EWA withdrawals, policies, batch summaries.</td></tr>
+      <tr><td>Companies / Employees</td><td>Component</td><td>Rails</td><td>Tenant + employee CRUD and mappings.</td></tr>
+      <tr><td>Treasury Controllers</td><td>Component</td><td>Rails (treasury connection)</td><td>Bank accounts, suspense, transaction requests.</td></tr>
+      <tr><td>Chargebacks Controller</td><td>Component</td><td>Rails</td><td>Chargeback case lifecycle and evidence.</td></tr>
+      <tr><td>Transfers Controller</td><td>Component</td><td>Rails</td><td>Wallet transfers and cashbacks.</td></tr>
+      <tr><td>Email Exports / IVR</td><td>Component</td><td>Rails</td><td>Async report generation endpoints, IVR callbacks.</td></tr>
+      <tr><td>Domain Services + ProcessorMediator entry</td><td>Component</td><td>Plain Ruby service objects</td><td>Coordinate domain logic; entry point into ProcessorMediator for CMS calls.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>Liberty Web &amp; Mobile</td><td>ApplicationController</td><td>All requests pass through ApplicationController before-actions</td><td>HTTPS</td></tr>
+      <tr><td>ApplicationController</td><td>Auth Gem Adapter</td><td>authenticate before every action</td><td>Ruby call</td></tr>
+      <tr><td>ApplicationController</td><td>Pundit Policies</td><td>authorize per-resource</td><td>Ruby call</td></tr>
+      <tr><td>ApplicationController</td><td>(All Controllers)</td><td>Inherited; subclasses receive auth-checked context</td><td>Ruby inheritance</td></tr>
+      <tr><td>Controllers</td><td>Domain Services + ProcessorMediator entry</td><td>Delegate domain work and CMS calls</td><td>Ruby call</td></tr>
+      <tr><td>Domain Services</td><td>Primary DB</td><td>ActiveRecord reads/writes</td><td>SQL</td></tr>
+      <tr><td>Domain Services</td><td>Redis</td><td>Enqueue Sidekiq jobs and lightweight cache</td><td>Redis protocol</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>One choke-point for auth.</strong> ApplicationController enforces authenticate and check_payment_provider!; subclasses don't repeat this. New controllers must inherit, not skip these callbacks.</li>
+    <li><strong>Controllers stay thin.</strong> They route into domain services and never call CMS adapters directly — that's the mediator's job.</li>
+    <li><strong>Pundit per resource.</strong> Each controller has a matching policy in app/policies; missing a policy is a deliberate decision, not an oversight.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Controllers shown are the major resource groupings; minor controllers (e.g. <code>card_operations</code>, <code>transaction_alerts</code>) are folded into the larger blocks for readability.</li>
+    <li>The component diagram glosses over serializers / decorators; if those become a hot architectural surface they should be promoted into their own component.</li>
+  </ul>
+</div>
+</body>
+</html>

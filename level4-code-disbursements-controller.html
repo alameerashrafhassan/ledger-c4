@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 4: DisbursementsController Code</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  text { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  text.title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <a href="level3-component-rails-api.html">Component</a> &gt; <strong>Code (DisbursementsController)</strong></div>
+  <a class="back" href="level3-component-rails-api.html">← Back to Rails API Components</a>
+  <h1>C4 Level 4 — Code: DisbursementsController</h1>
+  <div class="subtitle">Class diagram for the disbursement workflow controller and its collaborators.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DisbursementsController class diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+      </defs>
+
+      <g>
+        <rect x="40" y="40" width="240" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ApplicationController</text>
+        <text x="160" y="86" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="160" y="106" text-anchor="middle" fill="#fff" font-size="11">authenticate, authorize</text>
+      </g>
+
+      <g>
+        <rect x="400" y="40" width="380" height="280" rx="8" fill="#1168BD" />
+        <text class="title" x="590" y="68" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">DisbursementsController</text>
+        <text x="590" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <line x1="410" y1="98" x2="770" y2="98" stroke="#cfdcef" />
+        <text x="420" y="120" fill="#fff" font-size="12">+ index   GET   /disbursements</text>
+        <text x="420" y="140" fill="#fff" font-size="12">+ show    GET   /disbursements/:id</text>
+        <text x="420" y="160" fill="#fff" font-size="12">+ create  POST  /disbursements</text>
+        <text x="420" y="180" fill="#fff" font-size="12">+ submit  POST  /disbursements/:id/submit</text>
+        <text x="420" y="200" fill="#fff" font-size="12">+ approve POST  /disbursements/:id/approve</text>
+        <text x="420" y="220" fill="#fff" font-size="12">+ cancel  POST  /disbursements/:id/cancel</text>
+        <line x1="410" y1="235" x2="770" y2="235" stroke="#cfdcef" />
+        <text x="420" y="255" fill="#fff" font-size="12">- find_disbursement</text>
+        <text x="420" y="275" fill="#fff" font-size="12">- disbursement_params</text>
+        <text x="420" y="295" fill="#fff" font-size="12">- enqueue_processing!</text>
+      </g>
+
+      <g>
+        <rect x="900" y="40" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="1020" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">DisbursementPolicy</text>
+        <text x="1020" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class: app/policies]</text>
+        <text x="1020" y="108" text-anchor="middle" fill="#fff" font-size="11">create?, submit?, approve?,</text>
+        <text x="1020" y="124" text-anchor="middle" fill="#fff" font-size="11">cancel?</text>
+      </g>
+
+      <g>
+        <rect x="40" y="200" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="228" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Disbursement</text>
+        <text x="160" y="244" text-anchor="middle" fill="#cfdcef" font-size="11">[ActiveRecord]</text>
+        <text x="160" y="266" text-anchor="middle" fill="#fff" font-size="11">state: draft → submitted →</text>
+        <text x="160" y="282" text-anchor="middle" fill="#fff" font-size="11">approved → executed</text>
+      </g>
+
+      <g>
+        <rect x="40" y="380" width="280" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="180" y="408" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Disbursements::Submit</text>
+        <text x="180" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="180" y="446" text-anchor="middle" fill="#fff" font-size="11">.call(disbursement) →</text>
+        <text x="180" y="462" text-anchor="middle" fill="#fff" font-size="11">validate, transition, enqueue</text>
+      </g>
+
+      <g>
+        <rect x="400" y="380" width="280" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="540" y="408" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Disbursements::Approve</text>
+        <text x="540" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="540" y="446" text-anchor="middle" fill="#fff" font-size="11">.call(disbursement, approver)</text>
+        <text x="540" y="462" text-anchor="middle" fill="#fff" font-size="11">+ enqueue execution</text>
+      </g>
+
+      <g>
+        <rect x="760" y="380" width="280" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="900" y="408" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">DisbursementJob</text>
+        <text x="900" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Sidekiq worker]</text>
+        <text x="900" y="446" text-anchor="middle" fill="#fff" font-size="11">perform(id) → execute,</text>
+        <text x="900" y="462" text-anchor="middle" fill="#fff" font-size="11">via ProcessorMediator</text>
+      </g>
+
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M280,80 L400,80" marker-end="url(#arrow)" />
+        <path d="M780,90 L900,90" marker-end="url(#arrow)" />
+        <path d="M400,250 L280,250" marker-end="url(#arrow)" />
+        <path d="M460,320 L200,380" marker-end="url(#arrow)" />
+        <path d="M580,320 L540,380" marker-end="url(#arrow)" />
+        <path d="M680,320 L880,380" marker-end="url(#arrow)" />
+        <path d="M320,430 L400,430" marker-end="url(#arrow)" />
+        <path d="M680,430 L760,430" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="290" y="70">inherits</text>
+        <text x="800" y="80">authorize via</text>
+        <text x="290" y="240">load / persist</text>
+        <text x="280" y="365">submit →</text>
+        <text x="500" y="365">approve →</text>
+        <text x="720" y="365">enqueue →</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Internal class</span>
+    <span>Arrow = inherits / authorizes via / calls</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Shows the disbursement multi-step workflow at the code level: how the controller delegates to per-action service objects, transitions the model state machine, and enqueues a Sidekiq job for the heavy CMS-bound work.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ApplicationController</td><td>Class</td><td>Rails</td><td>Auth + rescues.</td></tr>
+      <tr><td>DisbursementsController</td><td>Class</td><td>Rails</td><td>Endpoints for the draft → submit → approve → execute lifecycle.</td></tr>
+      <tr><td>DisbursementPolicy</td><td>Class</td><td>Pundit</td><td>Action authorization (often role-gated).</td></tr>
+      <tr><td>Disbursement</td><td>ActiveRecord</td><td>Rails</td><td>Domain model with state transitions and validations.</td></tr>
+      <tr><td>Disbursements::Submit / Disbursements::Approve</td><td>Service</td><td>Plain Ruby</td><td>Encapsulate per-action transitions, side effects, enqueueing.</td></tr>
+      <tr><td>DisbursementJob</td><td>Sidekiq worker</td><td>Sidekiq</td><td>Executes approved disbursements asynchronously via ProcessorMediator.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>DisbursementsController</td><td>ApplicationController</td><td>Inherits auth</td><td>Ruby inheritance</td></tr>
+      <tr><td>DisbursementsController</td><td>DisbursementPolicy</td><td>Authorizes each action</td><td>Ruby call</td></tr>
+      <tr><td>DisbursementsController</td><td>Disbursement</td><td>Loads / writes the model</td><td>ActiveRecord</td></tr>
+      <tr><td>DisbursementsController</td><td>Disbursements::Submit / Approve</td><td>Delegates per-action work</td><td>Ruby call</td></tr>
+      <tr><td>Disbursements::Approve</td><td>DisbursementJob</td><td>Enqueues the heavy execution work</td><td>Sidekiq enqueue</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Service-per-action.</strong> Workflow steps are explicit objects (Submit, Approve), not boolean flags on a single God service — easier to test and audit.</li>
+    <li><strong>Heavy execution is async.</strong> Approval enqueues a job; the API doesn't block on CMS-bound work.</li>
+    <li><strong>State machine is in the model.</strong> Transitions are validated centrally on Disbursement, not by ad-hoc controller checks.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Action names shown are illustrative; the codebase may include extra actions (e.g., resubmit, retry).</li>
+    <li>Service object names follow the canonical "Disbursements::ActionName" convention used elsewhere in <code>app/services/disbursements/</code>.</li>
+  </ul>
+</div>
+</body>
+</html>

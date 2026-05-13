@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 4: CardsController Code</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  text { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  text.title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <a href="level3-component-rails-api.html">Component</a> &gt; <strong>Code (CardsController)</strong></div>
+  <a class="back" href="level3-component-rails-api.html">← Back to Rails API Components</a>
+  <h1>C4 Level 4 — Code: CardsController</h1>
+  <div class="subtitle">Class diagram for the Cards controllers and the immediate collaborators they delegate to.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CardsController class diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+      </defs>
+
+      <!-- ApplicationController -->
+      <g>
+        <rect x="40" y="40" width="240" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ApplicationController</text>
+        <text x="160" y="86" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="160" y="106" text-anchor="middle" fill="#fff" font-size="11">authenticate, authorize, …</text>
+      </g>
+
+      <!-- CardsController -->
+      <g>
+        <rect x="400" y="40" width="380" height="280" rx="8" fill="#1168BD" />
+        <text class="title" x="590" y="68" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">CardsController</text>
+        <text x="590" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <line x1="410" y1="98" x2="770" y2="98" stroke="#cfdcef" />
+        <text x="420" y="120" fill="#fff" font-size="12">+ index   GET   /cards</text>
+        <text x="420" y="140" fill="#fff" font-size="12">+ show    GET   /cards/:id</text>
+        <text x="420" y="160" fill="#fff" font-size="12">+ create  POST  /cards</text>
+        <text x="420" y="180" fill="#fff" font-size="12">+ reissue POST  /cards/:id/reissue</text>
+        <text x="420" y="200" fill="#fff" font-size="12">+ block   POST  /cards/:id/block</text>
+        <text x="420" y="220" fill="#fff" font-size="12">+ history GET   /cards/:id/history</text>
+        <line x1="410" y1="235" x2="770" y2="235" stroke="#cfdcef" />
+        <text x="420" y="255" fill="#fff" font-size="12">- find_card</text>
+        <text x="420" y="275" fill="#fff" font-size="12">- card_params</text>
+        <text x="420" y="295" fill="#fff" font-size="12">- beneficiary_for(card)</text>
+      </g>
+
+      <!-- CardPolicy -->
+      <g>
+        <rect x="900" y="40" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="1020" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">CardPolicy</text>
+        <text x="1020" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class: app/policies]</text>
+        <text x="1020" y="108" text-anchor="middle" fill="#fff" font-size="11">index?, show?, create?,</text>
+        <text x="1020" y="124" text-anchor="middle" fill="#fff" font-size="11">reissue?, block?</text>
+      </g>
+
+      <!-- Card model -->
+      <g>
+        <rect x="40" y="200" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="228" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Card</text>
+        <text x="160" y="244" text-anchor="middle" fill="#cfdcef" font-size="11">[ActiveRecord model]</text>
+        <text x="160" y="266" text-anchor="middle" fill="#fff" font-size="11">belongs_to :beneficiary</text>
+        <text x="160" y="282" text-anchor="middle" fill="#fff" font-size="11">has_many :cards_requests</text>
+      </g>
+
+      <!-- ProcessorMediator -->
+      <g>
+        <rect x="400" y="380" width="380" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="590" y="408" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ProcessorMediator</text>
+        <text x="590" y="424" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="590" y="448" text-anchor="middle" fill="#fff" font-size="12">.for(:show_card, beneficiary)</text>
+        <text x="590" y="464" text-anchor="middle" fill="#fff" font-size="12">.for(:create_card_manager, beneficiary)</text>
+      </g>
+
+      <!-- Service objects (one per CMS) -->
+      <g>
+        <rect x="40" y="500" width="280" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="180" y="528" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Cards::Details</text>
+        <text x="180" y="544" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="180" y="566" text-anchor="middle" fill="#fff" font-size="11">.call → Card details from PTL</text>
+      </g>
+      <g>
+        <rect x="460" y="500" width="280" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="600" y="528" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Postilion::Cards::Details</text>
+        <text x="600" y="544" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="600" y="566" text-anchor="middle" fill="#fff" font-size="11">.call → Card details from Postilion</text>
+      </g>
+      <g>
+        <rect x="860" y="500" width="280" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="1000" y="528" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Ebc::Cards::Details</text>
+        <text x="1000" y="544" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="1000" y="566" text-anchor="middle" fill="#fff" font-size="11">.call → via CDE proxy</text>
+      </g>
+
+      <!-- Arrows -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M280,80 L400,80" marker-end="url(#arrow)" />
+        <path d="M780,90 L900,90" marker-end="url(#arrow)" />
+        <path d="M400,250 L280,250" marker-end="url(#arrow)" />
+        <path d="M590,320 L590,380" marker-end="url(#arrow)" />
+        <path d="M460,480 L180,500" marker-end="url(#arrow)" />
+        <path d="M590,480 L590,500" marker-end="url(#arrow)" />
+        <path d="M720,480 L1000,500" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="290" y="70">inherits</text>
+        <text x="800" y="80">authorize via</text>
+        <text x="290" y="240">find / load</text>
+        <text x="600" y="365">delegates CMS calls</text>
+        <text x="280" y="495">resolves →</text>
+        <text x="600" y="495">resolves →</text>
+        <text x="900" y="495">resolves →</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Internal class</span>
+    <span>Arrow = inherits / authorizes via / delegates to</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Shows how the Cards controller wires the HTTP route to the Card model, the CardPolicy, and the CMS-bound service classes via <code>ProcessorMediator</code>. The same shape applies to other resource controllers; this is the canonical example.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ApplicationController</td><td>Class</td><td>Rails</td><td>Provides auth before-actions and error rescues.</td></tr>
+      <tr><td>CardsController</td><td>Class</td><td>Rails</td><td>HTTP endpoints for card lifecycle: index, show, create, reissue, block, history.</td></tr>
+      <tr><td>CardPolicy</td><td>Class</td><td>Pundit</td><td>Per-action and per-record authorization for cards.</td></tr>
+      <tr><td>Card</td><td>ActiveRecord model</td><td>Rails</td><td>Card row + associations (beneficiary, cards_requests).</td></tr>
+      <tr><td>ProcessorMediator</td><td>Class</td><td>Plain Ruby</td><td>Resolves the right CMS service class for the card's beneficiary.</td></tr>
+      <tr><td>Paymentology::Cards::Details / Postilion::Cards::Details / Ebc::Cards::Details</td><td>Service classes</td><td>Plain Ruby</td><td>Per-CMS implementations of card detail / lifecycle calls.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>CardsController</td><td>ApplicationController</td><td>Inherits auth + rescues</td><td>Ruby inheritance</td></tr>
+      <tr><td>CardsController</td><td>CardPolicy</td><td>Calls authorize for each action</td><td>Ruby call</td></tr>
+      <tr><td>CardsController</td><td>Card</td><td>Loads / writes Card rows</td><td>ActiveRecord</td></tr>
+      <tr><td>CardsController</td><td>ProcessorMediator</td><td>Resolves the right CMS service for the card</td><td>Ruby call</td></tr>
+      <tr><td>ProcessorMediator</td><td>Paymentology::Cards::Details / Postilion::Cards::Details / Ebc::Cards::Details</td><td>Returns the adapter for the beneficiary's cms_marker</td><td>Ruby instantiation</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Controller never picks a CMS.</strong> It always asks ProcessorMediator with the card's beneficiary.</li>
+    <li><strong>Pundit policies live alongside the resource.</strong> Adding a new action requires adding a corresponding policy method.</li>
+    <li><strong>EBC card detail goes via CDE.</strong> The <code>Ebc::Cards::Details</code> service goes through the CDE proxy — no other path exists.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Action set shown reflects common card endpoints; the actual controller may include card-operation specifics that live under <code>card_operations/</code>.</li>
+    <li>The <code>beneficiary_for(card)</code> helper is illustrative and may live in a concern.</li>
+  </ul>
+</div>
+</body>
+</html>

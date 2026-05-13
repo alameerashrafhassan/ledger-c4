@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 4: ProcessorMediator Code</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  text { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  text.title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <a href="level3-component-processor-mediator.html">Component</a> &gt; <strong>Code (ProcessorMediator)</strong></div>
+  <a class="back" href="level3-component-processor-mediator.html">← Back to ProcessorMediator Components</a>
+  <h1>C4 Level 4 — Code: ProcessorMediator</h1>
+  <div class="subtitle">Class diagram of the dispatcher itself, its MAPPING table, and how it picks an adapter from a beneficiary's cms_marker.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ProcessorMediator class diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+      </defs>
+
+      <!-- Beneficiary -->
+      <g>
+        <rect x="40" y="40" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Beneficiary</text>
+        <text x="160" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[ActiveRecord]</text>
+        <text x="160" y="106" text-anchor="middle" fill="#fff" font-size="11">cms_marker → :paymentology |</text>
+        <text x="160" y="122" text-anchor="middle" fill="#fff" font-size="11">  :postilion | :ebc</text>
+      </g>
+
+      <!-- ProcessorMediator -->
+      <g>
+        <rect x="400" y="40" width="420" height="320" rx="8" fill="#1168BD" />
+        <text class="title" x="610" y="68" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">ProcessorMediator</text>
+        <text x="610" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <line x1="410" y1="98" x2="810" y2="98" stroke="#cfdcef" />
+        <text x="420" y="120" fill="#fff" font-size="12">MAPPING = {</text>
+        <text x="430" y="138" fill="#fff" font-size="12">show_card: { ebc:, paymentology:, postilion: },</text>
+        <text x="430" y="156" fill="#fff" font-size="12">create_card_manager: { … },</text>
+        <text x="430" y="174" fill="#fff" font-size="12">show_balance: { … },</text>
+        <text x="430" y="192" fill="#fff" font-size="12">protected_update_balance: { … },</text>
+        <text x="430" y="210" fill="#fff" font-size="12">create_wallet: { … },</text>
+        <text x="430" y="228" fill="#fff" font-size="12">cards_history: { … },</text>
+        <text x="430" y="246" fill="#fff" font-size="12">list_transactions: { … }, …</text>
+        <text x="420" y="264" fill="#fff" font-size="12">}</text>
+        <line x1="410" y1="278" x2="810" y2="278" stroke="#cfdcef" />
+        <text x="420" y="298" fill="#fff" font-size="12">+ self.for(service_key, beneficiary)</text>
+        <text x="420" y="316" fill="#fff" font-size="12">  → MAPPING[service_key][beneficiary.cms_marker]</text>
+        <text x="420" y="334" fill="#fff" font-size="12">  .new(beneficiary, …)</text>
+      </g>
+
+      <!-- Adapter base classes -->
+      <g>
+        <rect x="40" y="400" width="280" height="140" rx="8" fill="#1168BD" />
+        <text class="title" x="180" y="428" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Base</text>
+        <text x="180" y="444" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="180" y="466" text-anchor="middle" fill="#fff" font-size="11">.new(beneficiary, …)</text>
+        <text x="180" y="484" text-anchor="middle" fill="#fff" font-size="11">.call</text>
+        <text x="180" y="510" text-anchor="middle" fill="#fff" font-size="11">subclasses: Cards::*, Balances::*,</text>
+        <text x="180" y="526" text-anchor="middle" fill="#fff" font-size="11">Accounts::*, Transactions::*</text>
+      </g>
+      <g>
+        <rect x="360" y="400" width="280" height="140" rx="8" fill="#1168BD" />
+        <text class="title" x="500" y="428" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Postilion::Base</text>
+        <text x="500" y="444" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="500" y="466" text-anchor="middle" fill="#fff" font-size="11">.new(beneficiary, …)</text>
+        <text x="500" y="484" text-anchor="middle" fill="#fff" font-size="11">.call</text>
+        <text x="500" y="510" text-anchor="middle" fill="#fff" font-size="11">subclasses: Cards::*, Balances::*,</text>
+        <text x="500" y="526" text-anchor="middle" fill="#fff" font-size="11">Accounts::*, Transactions::*</text>
+      </g>
+      <g>
+        <rect x="680" y="400" width="280" height="140" rx="8" fill="#1168BD" />
+        <text class="title" x="820" y="428" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Ebc::Base</text>
+        <text x="820" y="444" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="820" y="466" text-anchor="middle" fill="#fff" font-size="11">.new(beneficiary, …)</text>
+        <text x="820" y="484" text-anchor="middle" fill="#fff" font-size="11">.call</text>
+        <text x="820" y="510" text-anchor="middle" fill="#fff" font-size="11">subclasses: Cards::*, Balances::*</text>
+        <text x="820" y="526" text-anchor="middle" fill="#fff" font-size="11">(many still TODO)</text>
+      </g>
+
+      <!-- Caller -->
+      <g>
+        <rect x="900" y="40" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="1020" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Caller (Controller / Job)</text>
+        <text x="1020" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="1020" y="108" text-anchor="middle" fill="#fff" font-size="11">ProcessorMediator</text>
+        <text x="1020" y="124" text-anchor="middle" fill="#fff" font-size="11">.for(:show_card, b).call</text>
+      </g>
+
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M280,90 L400,90" marker-end="url(#arrow)" />
+        <path d="M900,90 L820,90" marker-end="url(#arrow)" />
+        <path d="M460,360 L180,400" marker-end="url(#arrow)" />
+        <path d="M610,360 L500,400" marker-end="url(#arrow)" />
+        <path d="M760,360 L820,400" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="290" y="80">cms_marker →</text>
+        <text x="850" y="80">.for(:key, b)</text>
+        <text x="280" y="395">resolves to (PTL)</text>
+        <text x="500" y="395">resolves to (Postilion)</text>
+        <text x="760" y="395">resolves to (EBC)</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Internal class</span>
+    <span>Arrow = uses / resolves to</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Shows what's actually inside <code>app/services/processor_mediator.rb</code>: a static <code>MAPPING</code> table from a service_key (e.g. <code>:show_card</code>) to a hash keyed by <code>cms_marker</code>. <code>.for(key, beneficiary)</code> picks the right class and instantiates it with the beneficiary.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Beneficiary</td><td>ActiveRecord</td><td>Rails</td><td>Carries the <code>cms_marker</code> attribute that drives mediator dispatch.</td></tr>
+      <tr><td>ProcessorMediator</td><td>Class</td><td>Plain Ruby</td><td>Holds <code>MAPPING</code> + <code>.for</code> factory; the only place callers should touch.</td></tr>
+      <tr><td>Paymentology::Base / Postilion::Base / Ebc::Base</td><td>Base classes</td><td>Plain Ruby</td><td>Common initializer + <code>.call</code> contract for each CMS adapter family.</td></tr>
+      <tr><td>Caller (Controller / Job)</td><td>Class</td><td>Rails</td><td>Code that calls <code>ProcessorMediator.for(:key, b).call</code> — never adapter classes directly.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>Caller</td><td>ProcessorMediator</td><td>Calls <code>.for(:service_key, beneficiary)</code></td><td>Ruby</td></tr>
+      <tr><td>ProcessorMediator</td><td>Beneficiary</td><td>Reads <code>cms_marker</code></td><td>Ruby</td></tr>
+      <tr><td>ProcessorMediator</td><td>Paymentology::Base / Postilion::Base / Ebc::Base</td><td>Resolves to a subclass and instantiates it</td><td>Ruby</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Static mapping, not dynamic registration.</strong> Adapter wiring lives in one Ruby hash so it's grep-able and reviewable in a PR; new CMS additions need an explicit edit.</li>
+    <li><strong>Same initializer signature per service_key.</strong> Adapters for the same key must accept the same args so the call site stays uniform.</li>
+    <li><strong>EBC entries that point at <code>Ebc::Base</code></strong> are explicit TODO placeholders — they will raise/no-op until the EBC implementation lands.</li>
+    <li><strong>Two balance update keys.</strong> <code>protected_update_balance</code> and <code>update_balance</code> are intentionally separate so tests don't always pay retry overhead.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Service-key naming is a soft convention (snake_case verbs); the canonical list is the MAPPING constant.</li>
+    <li>Future expansion (new CMS) is expected to add a fourth column to MAPPING rather than introduce a sibling registry.</li>
+  </ul>
+</div>
+</body>
+</html>

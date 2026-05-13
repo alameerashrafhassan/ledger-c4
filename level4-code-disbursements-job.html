@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 4: DisbursementJob Code</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  text { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  text.title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <a href="level3-component-sidekiq-workers.html">Component</a> &gt; <strong>Code (DisbursementJob)</strong></div>
+  <a class="back" href="level3-component-sidekiq-workers.html">← Back to Sidekiq Components</a>
+  <h1>C4 Level 4 — Code: DisbursementJob</h1>
+  <div class="subtitle">Class diagram for the disbursement Sidekiq worker.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DisbursementJob class diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+      </defs>
+
+      <g>
+        <rect x="40" y="40" width="240" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ApplicationJob</text>
+        <text x="160" y="86" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="160" y="106" text-anchor="middle" fill="#fff" font-size="11">retry, error, tenancy</text>
+      </g>
+
+      <g>
+        <rect x="400" y="40" width="380" height="240" rx="8" fill="#1168BD" />
+        <text class="title" x="590" y="68" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">DisbursementJob</text>
+        <text x="590" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Sidekiq worker]</text>
+        <line x1="410" y1="98" x2="770" y2="98" stroke="#cfdcef" />
+        <text x="420" y="120" fill="#fff" font-size="12">+ perform(disbursement_id)</text>
+        <text x="420" y="140" fill="#fff" font-size="12">+ sidekiq_options retry: 5,</text>
+        <text x="420" y="156" fill="#fff" font-size="12">  queue: :disbursements</text>
+        <line x1="410" y1="170" x2="770" y2="170" stroke="#cfdcef" />
+        <text x="420" y="192" fill="#fff" font-size="12">- disbursement = find(id)</text>
+        <text x="420" y="212" fill="#fff" font-size="12">- enqueue_employee_disbursements</text>
+        <text x="420" y="232" fill="#fff" font-size="12">- transition_to(:executed)</text>
+        <text x="420" y="252" fill="#fff" font-size="12">- notify_admins!</text>
+      </g>
+
+      <g>
+        <rect x="900" y="40" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="1020" y="68" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">EmployeeDisbursementJob</text>
+        <text x="1020" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Sidekiq worker]</text>
+        <text x="1020" y="108" text-anchor="middle" fill="#fff" font-size="11">perform(employee_disbursement_id)</text>
+        <text x="1020" y="124" text-anchor="middle" fill="#fff" font-size="11">→ ProcessorMediator</text>
+      </g>
+
+      <g>
+        <rect x="40" y="200" width="240" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="160" y="228" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Disbursement</text>
+        <text x="160" y="244" text-anchor="middle" fill="#cfdcef" font-size="11">[ActiveRecord]</text>
+        <text x="160" y="266" text-anchor="middle" fill="#fff" font-size="11">has_many :employee_disbursements</text>
+      </g>
+
+      <g>
+        <rect x="400" y="340" width="380" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="590" y="368" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">ProcessorMediator</text>
+        <text x="590" y="384" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="590" y="406" text-anchor="middle" fill="#fff" font-size="12">.for(:protected_update_balance, beneficiary)</text>
+        <text x="590" y="422" text-anchor="middle" fill="#fff" font-size="12">.for(:create_wallet, beneficiary)</text>
+      </g>
+
+      <g>
+        <rect x="40" y="460" width="380" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="230" y="488" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Balances::UpdateWithRetry</text>
+        <text x="230" y="504" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="230" y="526" text-anchor="middle" fill="#fff" font-size="11">.call(amount, account) →</text>
+        <text x="230" y="542" text-anchor="middle" fill="#fff" font-size="11">retries on transient PTL errors</text>
+      </g>
+      <g>
+        <rect x="460" y="460" width="320" height="100" rx="8" fill="#1168BD" />
+        <text class="title" x="620" y="488" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Postilion::Balances::Update</text>
+        <text x="620" y="504" text-anchor="middle" fill="#cfdcef" font-size="11">[Service]</text>
+        <text x="620" y="526" text-anchor="middle" fill="#fff" font-size="11">.call(amount, account)</text>
+      </g>
+
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M280,80 L400,80" marker-end="url(#arrow)" />
+        <path d="M400,250 L280,250" marker-end="url(#arrow)" />
+        <path d="M780,90 L900,90" marker-end="url(#arrow)" />
+        <path d="M1020,140 L590,340" marker-end="url(#arrow)" />
+        <path d="M540,440 L230,460" marker-end="url(#arrow)" />
+        <path d="M620,440 L620,460" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="290" y="70">inherits</text>
+        <text x="290" y="240">load</text>
+        <text x="800" y="80">enqueues per-employee</text>
+        <text x="800" y="220">delegates CMS work →</text>
+        <text x="280" y="450">resolves →</text>
+        <text x="600" y="450">resolves →</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Internal class</span>
+    <span>Arrow = inherits / loads / enqueues / resolves to</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Shows what runs when an approved disbursement is executed asynchronously: the parent <code>DisbursementJob</code> fans out to per-employee jobs, each of which calls <code>ProcessorMediator</code> for CMS-bound balance / wallet operations.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>ApplicationJob</td><td>Class</td><td>ActiveJob base</td><td>Common retry / error / tenant context.</td></tr>
+      <tr><td>DisbursementJob</td><td>Sidekiq worker</td><td>Sidekiq</td><td>Top-level execution: load disbursement, fan out per-employee, transition state.</td></tr>
+      <tr><td>EmployeeDisbursementJob</td><td>Sidekiq worker</td><td>Sidekiq</td><td>Per-employee CMS work via ProcessorMediator.</td></tr>
+      <tr><td>Disbursement</td><td>ActiveRecord model</td><td>Rails</td><td>Has many EmployeeDisbursements; owns the lifecycle state.</td></tr>
+      <tr><td>ProcessorMediator</td><td>Class</td><td>Plain Ruby</td><td>Resolves per-CMS update_balance / create_wallet adapter.</td></tr>
+      <tr><td>Paymentology::Balances::UpdateWithRetry / Postilion::Balances::Update</td><td>Service</td><td>Plain Ruby</td><td>Per-CMS balance-update implementations.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>DisbursementJob</td><td>ApplicationJob</td><td>Inherits retry / tenancy</td><td>Ruby</td></tr>
+      <tr><td>DisbursementJob</td><td>Disbursement</td><td>Loads it; transitions state on completion</td><td>ActiveRecord</td></tr>
+      <tr><td>DisbursementJob</td><td>EmployeeDisbursementJob</td><td>Enqueues one per employee</td><td>Sidekiq enqueue</td></tr>
+      <tr><td>EmployeeDisbursementJob</td><td>ProcessorMediator</td><td>Calls <code>.for(:protected_update_balance, beneficiary)</code></td><td>Ruby</td></tr>
+      <tr><td>ProcessorMediator</td><td>Paymentology::Balances::UpdateWithRetry / Postilion::Balances::Update</td><td>Resolves implementation by cms_marker</td><td>Ruby</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Fan-out, not in-line.</strong> The parent job enqueues per-employee jobs so a single failed CMS call can't fail the whole batch.</li>
+    <li><strong>Retry-aware service variant.</strong> <code>protected_update_balance</code> intentionally points at PTL's <code>UpdateWithRetry</code> to wrap transient errors — and is kept separate from <code>update_balance</code> so tests don't always pay the retry cost.</li>
+    <li><strong>State transitions land in the model.</strong> Job code calls a transition helper; it doesn't write status fields by hand.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Queue name <code>:disbursements</code> shown as the convention; verify against <code>config/sidekiq.yml</code> for the production queue name.</li>
+    <li>Notifications are illustrative; the actual job may use a dedicated NotificationsJob.</li>
+  </ul>
+</div>
+</body>
+</html>

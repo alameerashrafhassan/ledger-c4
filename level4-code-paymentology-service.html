@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine 2.0 — C4 Level 4: Paymentology Adapter Code</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f5f7fa; color: #222; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 64px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.05); }
+  .crumbs { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .crumbs a { color: #1168BD; text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .back { display: inline-block; margin-bottom: 12px; font-size: 13px; color: #1168BD; text-decoration: none; padding: 6px 10px; border: 1px solid #1168BD; border-radius: 4px; }
+  .back:hover { background: #1168BD; color: #fff; }
+  h1 { margin: 4px 0 4px; font-size: 26px; }
+  h2 { margin-top: 32px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .subtitle { color: #666; margin-bottom: 16px; }
+  .diagram { border: 1px solid #e3e6eb; background: #fafbfc; border-radius: 6px; padding: 12px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  text { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  text.title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="level1-context.html">Context</a> &gt; <a href="level2-container.html">Container</a> &gt; <a href="level3-component-processor-mediator.html">Component</a> &gt; <strong>Code (Paymentology Adapter)</strong></div>
+  <a class="back" href="level3-component-processor-mediator.html">← Back to ProcessorMediator Components</a>
+  <h1>C4 Level 4 — Code: Paymentology Adapter</h1>
+  <div class="subtitle">Class diagram for one CMS adapter family — Paymentology — and its HTTP-client backing layer. Postilion and EBC mirror this shape.</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paymentology adapter class diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555" />
+        </marker>
+        <linearGradient id="cylTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0d4f8f" /><stop offset="1" stop-color="#1168BD" />
+        </linearGradient>
+      </defs>
+
+      <!-- Paymentology::Base -->
+      <g>
+        <rect x="40" y="40" width="320" height="180" rx="8" fill="#1168BD" />
+        <text class="title" x="200" y="68" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Paymentology::Base</text>
+        <text x="200" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Abstract Class]</text>
+        <line x1="50" y1="98" x2="350" y2="98" stroke="#cfdcef" />
+        <text x="60" y="120" fill="#fff" font-size="12">+ initialize(beneficiary, **opts)</text>
+        <text x="60" y="140" fill="#fff" font-size="12">+ call</text>
+        <line x1="50" y1="155" x2="350" y2="155" stroke="#cfdcef" />
+        <text x="60" y="178" fill="#fff" font-size="12">- http_client → HttpClients::Paymentology</text>
+        <text x="60" y="196" fill="#fff" font-size="12">- credentials_for(beneficiary)</text>
+        <text x="60" y="214" fill="#fff" font-size="12">- log_request!(payload, response)</text>
+      </g>
+
+      <!-- Subclasses -->
+      <g>
+        <rect x="440" y="40" width="320" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="600" y="68" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Cards::Details</text>
+        <text x="600" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="600" y="106" text-anchor="middle" fill="#fff" font-size="11">.call → GET /cards/:id</text>
+      </g>
+      <g>
+        <rect x="440" y="140" width="320" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="600" y="168" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Balances::UpdateWithRetry</text>
+        <text x="600" y="184" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="600" y="206" text-anchor="middle" fill="#fff" font-size="11">.call → POST + retry on transient errors</text>
+      </g>
+      <g>
+        <rect x="820" y="40" width="320" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="980" y="68" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Cards::CreationManager</text>
+        <text x="980" y="84" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="980" y="106" text-anchor="middle" fill="#fff" font-size="11">.call → POST /cards + persist Card row</text>
+      </g>
+      <g>
+        <rect x="820" y="140" width="320" height="80" rx="8" fill="#1168BD" />
+        <text class="title" x="980" y="168" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Paymentology::Transactions::List</text>
+        <text x="980" y="184" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <text x="980" y="206" text-anchor="middle" fill="#fff" font-size="11">.call → GET /transactions</text>
+      </g>
+
+      <!-- HttpClients::Paymentology -->
+      <g>
+        <rect x="40" y="280" width="380" height="180" rx="8" fill="#1168BD" />
+        <text class="title" x="230" y="308" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">HttpClients::Paymentology</text>
+        <text x="230" y="324" text-anchor="middle" fill="#cfdcef" font-size="11">[Class]</text>
+        <line x1="50" y1="338" x2="410" y2="338" stroke="#cfdcef" />
+        <text x="60" y="358" fill="#fff" font-size="12">+ initialize(credentials)</text>
+        <text x="60" y="376" fill="#fff" font-size="12">+ get(path, params)</text>
+        <text x="60" y="394" fill="#fff" font-size="12">+ post(path, body)</text>
+        <line x1="50" y1="408" x2="410" y2="408" stroke="#cfdcef" />
+        <text x="60" y="428" fill="#fff" font-size="12">- base_uri = X_PTL_CONFIGS[:base_uri]</text>
+        <text x="60" y="446" fill="#fff" font-size="12">- log!(req, res) → PaymentologyLog.create!</text>
+      </g>
+
+      <!-- PaymentologyLog model -->
+      <g>
+        <rect x="500" y="280" width="280" height="120" rx="8" fill="#1168BD" />
+        <text class="title" x="640" y="308" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">PaymentologyLog</text>
+        <text x="640" y="324" text-anchor="middle" fill="#cfdcef" font-size="11">[ActiveRecord]</text>
+        <text x="640" y="346" text-anchor="middle" fill="#fff" font-size="11">request_url, request_body,</text>
+        <text x="640" y="362" text-anchor="middle" fill="#fff" font-size="11">response_code, response_body,</text>
+        <text x="640" y="378" text-anchor="middle" fill="#fff" font-size="11">duration_ms</text>
+      </g>
+
+      <!-- External -->
+      <g>
+        <rect x="860" y="280" width="280" height="120" rx="8" fill="#999999" />
+        <text class="title" x="1000" y="308" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Paymentology API</text>
+        <text x="1000" y="324" text-anchor="middle" fill="#eee" font-size="11">[External CMS]</text>
+        <text x="1000" y="346" text-anchor="middle" fill="#fff" font-size="11">REST/JSON over HTTPS</text>
+        <text x="1000" y="362" text-anchor="middle" fill="#fff" font-size="11">Token / mTLS authenticated</text>
+      </g>
+
+      <!-- Primary DB cylinder -->
+      <g>
+        <ellipse cx="640" cy="500" rx="120" ry="14" fill="url(#cylTop)" />
+        <rect x="520" y="500" width="240" height="60" fill="#1168BD" />
+        <ellipse cx="640" cy="560" rx="120" ry="14" fill="#1168BD" />
+        <text x="640" y="525" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Primary DB</text>
+        <text x="640" y="545" text-anchor="middle" fill="#cfdcef" font-size="11">[PostgreSQL]</text>
+      </g>
+
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <path d="M360,80 L440,80" marker-end="url(#arrow)" />
+        <path d="M360,180 L440,180" marker-end="url(#arrow)" />
+        <path d="M360,80 L820,80" marker-end="url(#arrow)" />
+        <path d="M360,180 L820,180" marker-end="url(#arrow)" />
+        <path d="M200,220 L230,280" marker-end="url(#arrow)" />
+        <path d="M420,360 L500,340" marker-end="url(#arrow)" />
+        <path d="M420,360 L860,340" marker-end="url(#arrow)" />
+        <path d="M640,400 L640,488" marker-end="url(#arrow)" />
+      </g>
+
+      <g font-size="11" fill="#333">
+        <text x="370" y="70">inherits</text>
+        <text x="370" y="170">inherits</text>
+        <text x="200" y="270">uses HTTP via</text>
+        <text x="430" y="335">writes log →</text>
+        <text x="430" y="380">HTTP →</text>
+        <text x="650" y="475">[SQL]</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:#1168BD"></span>Internal class</span>
+    <span><span class="swatch" style="background:#999999"></span>External system</span>
+    <span>Cylinder = data store</span>
+  </div>
+
+  <h2>Purpose</h2>
+  <p>Shows the internal shape of one CMS adapter family. Each operation (cards, balances, transactions, accounts) is a small class inheriting from <code>Paymentology::Base</code>; HTTP and audit-log responsibility is delegated to <code>HttpClients::Paymentology</code>. The same shape is repeated in <code>Postilion::*</code> and <code>Ebc::*</code>.</p>
+
+  <h2>Element list</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Technology</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Paymentology::Base</td><td>Abstract Class</td><td>Plain Ruby</td><td>Holds shared initializer, http_client accessor, request logging.</td></tr>
+      <tr><td>Paymentology::Cards::Details / CreationManager</td><td>Class</td><td>Plain Ruby</td><td>Card show / creation against PTL.</td></tr>
+      <tr><td>Paymentology::Balances::UpdateWithRetry</td><td>Class</td><td>Plain Ruby</td><td>Balance update with explicit retry behaviour for transient errors.</td></tr>
+      <tr><td>Paymentology::Transactions::List</td><td>Class</td><td>Plain Ruby</td><td>Lists transactions for a card / account.</td></tr>
+      <tr><td>HttpClients::Paymentology</td><td>Class</td><td>rest-client wrapper</td><td>Issues HTTP calls; persists a PaymentologyLog row per call.</td></tr>
+      <tr><td>PaymentologyLog</td><td>ActiveRecord</td><td>Rails / PostgreSQL</td><td>Per-call audit row: request, response, duration.</td></tr>
+      <tr><td>Paymentology API</td><td>External CMS</td><td>HTTPS / JSON</td><td>The actual CMS being called.</td></tr>
+      <tr><td>Primary DB</td><td>Data store</td><td>PostgreSQL</td><td>Holds the log table.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relationships</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Description</th><th>Protocol</th></tr></thead>
+    <tbody>
+      <tr><td>Paymentology::Cards::Details, ::Cards::CreationManager, ::Balances::UpdateWithRetry, ::Transactions::List</td><td>Paymentology::Base</td><td>Inherit shared infrastructure</td><td>Ruby inheritance</td></tr>
+      <tr><td>Paymentology::Base</td><td>HttpClients::Paymentology</td><td>Delegates HTTP + logging</td><td>Ruby</td></tr>
+      <tr><td>HttpClients::Paymentology</td><td>PaymentologyLog</td><td>Writes audit row for every call</td><td>SQL</td></tr>
+      <tr><td>HttpClients::Paymentology</td><td>Paymentology API</td><td>Performs the actual HTTP request</td><td>HTTPS / JSON</td></tr>
+      <tr><td>PaymentologyLog</td><td>Primary DB</td><td>Persistence</td><td>SQL</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions &amp; Notes</h2>
+  <ul>
+    <li><strong>Mirror structure across CMSs.</strong> Postilion and EBC use the same Base / Subclass / HttpClient / Log shape so callers can swap implementations transparently.</li>
+    <li><strong>Audit on every call.</strong> The HttpClients layer writes a log row for every request; this is non-negotiable and must not be skipped for &quot;ephemeral&quot; calls.</li>
+    <li><strong>Retry is opt-in.</strong> Only services that explicitly need it (e.g. <code>UpdateWithRetry</code>) wrap retry; everyone else bubbles errors so callers / Sidekiq retry policy decide.</li>
+    <li><strong>Config via Rails.configuration.x.</strong> Base URI and credentials come from <code>X_PTL_CONFIGS</code> / <code>application.yml</code>, not hard-coded.</li>
+  </ul>
+
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Method signatures shown (<code>get</code>, <code>post</code>) are illustrative; the real client may expose <code>request(verb, path, …)</code>.</li>
+    <li>Per-CMS log tables in the codebase are <code>paymentology_log</code> / <code>postilion_log</code> / <code>ebc_log</code>; the model class names follow the same convention.</li>
+  </ul>
+</div>
+</body>
+</html>
