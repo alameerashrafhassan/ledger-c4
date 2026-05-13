@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chargeback Settlement — Business Flow · PayEngine Ledger</title>
+<style>
+  :root{--c-customer:#1168BD;--c-suspense:#CA8A04;--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;} .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;} h3{font-size:15px;margin-top:18px;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  .toggle-link{float:right;font-size:13px;}
+  .toggle-link a{color:var(--c-customer);text-decoration:none;border:1px solid var(--c-customer);padding:4px 8px;border-radius:4px;}
+  .toggle-link a:hover{background:var(--c-customer);color:#fff;}
+  .player{position:sticky;top:0;background:#fff;border:1px solid #e3e6eb;border-radius:8px;padding:10px 14px;margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+  .player button,.player select{font-size:13px;padding:5px 10px;border:1px solid #d0d4d9;background:#fff;border-radius:4px;cursor:pointer;}
+  .player .step-counter{font-weight:600;font-size:13px;color:#333;margin-left:auto;}
+  .stage{border:1px solid #e3e6eb;background:#fafbfc;border-radius:8px;padding:10px;}
+  svg.flow{display:block;width:100%;height:auto;}
+  svg.flow .acc-box{cursor:pointer;}
+  svg.flow .acc-box:hover{opacity:0.9;}
+  svg.flow .step-arc{stroke:#bbb;stroke-width:1.5;fill:none;stroke-dasharray:4 3;}
+  svg.flow .step-arc.active{stroke:#1168BD;stroke-dasharray:none;}
+  svg.flow .step-arc.failed{stroke:#dc2626;}
+  svg.flow .token{opacity:0;}
+  svg.flow .token.show{opacity:1;}
+  svg.flow .token.failed circle{fill:#dc2626;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  td.amt{font-variant-numeric:tabular-nums;text-align:right;}
+  .step-detail{display:none;background:#f7faff;border-left:3px solid var(--c-customer);padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 0;}
+  .step-detail.open{display:block;}
+  .step-row{cursor:pointer;}
+  .step-row:hover{background:#f7faff;}
+  .integrity{margin-top:14px;padding:12px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;font-size:13px;}
+  .integrity.bad{background:#fef2f2;border-color:#fecaca;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} .player{display:none;} svg.flow .token{display:none;} svg.flow .step-arc{stroke:#888;stroke-dasharray:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; Business flows &gt; <strong>Chargeback settlement</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <span class="toggle-link"><a href="flow-technical-chargeback.html">View technical flow →</a></span>
+
+  <h1>Chargeback settlement</h1>
+  <p class="lead">
+    An ops user marks a pending chargeback as <code>approved</code>. The disputed amount is credited to
+    the cardholder's <code>cash</code> account from the system <code>suspense</code> account.
+    Implementation: <code>Chargebacks::Settle</code>.
+  </p>
+
+  <h3>Actors</h3>
+  <ul style="margin-top:4px;font-size:14px;">
+    <li><strong>Initiator:</strong> Operations / Treasury user</li>
+    <li><strong>Affected:</strong> Cardholder (cash account credited), system suspense (debited)</li>
+    <li><strong>System:</strong> <code>Chargebacks::Settle</code> service</li>
+  </ul>
+
+  <div class="player" id="player">
+    <button data-act="restart">⏮</button>
+    <button data-act="play" id="btn-play">▶</button>
+    <button data-act="step">⏩</button>
+    <label style="font-size:12px;color:#555;">Speed
+      <select data-act="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+    </label>
+    <label style="font-size:12px;color:#555;">Scenario
+      <select data-act="scenario">
+        <option value="happy" selected>Happy path</option>
+        <option value="failure">Lock contention (already non-pending)</option>
+      </select>
+    </label>
+    <span class="step-counter">Step <span id="step-now">0</span> of <span id="step-total">0</span></span>
+  </div>
+
+  <div class="stage">
+    <svg class="flow" viewBox="0 0 1500 500" id="flowSvg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="cylSus" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a16207"/><stop offset="1" stop-color="#CA8A04"/></linearGradient>
+        <linearGradient id="cylBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d4f8f"/><stop offset="1" stop-color="#1168BD"/></linearGradient>
+      </defs>
+
+      <a href="account-suspense.html"><g class="acc-box" id="acc-sus">
+        <ellipse cx="200" cy="100" rx="140" ry="14" fill="url(#cylSus)"/>
+        <rect x="60" y="100" width="280" height="140" fill="#CA8A04"/>
+        <ellipse cx="200" cy="240" rx="140" ry="14" fill="#CA8A04"/>
+        <text x="200" y="135" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">suspense</text>
+        <text x="200" y="155" fill="#fef3c7" font-size="11" text-anchor="middle">[system]</text>
+        <text class="bal" x="200" y="200" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" data-acc="sus" data-base="1000000">EGP 1,000,000</text>
+      </g></a>
+
+      <a href="account-cash.html"><g class="acc-box" id="acc-card">
+        <ellipse cx="1280" cy="100" rx="140" ry="14" fill="url(#cylBlue)"/>
+        <rect x="1140" y="100" width="280" height="140" fill="#1168BD"/>
+        <ellipse cx="1280" cy="240" rx="140" ry="14" fill="#1168BD"/>
+        <text x="1280" y="135" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">chargeback_account</text>
+        <text x="1280" y="155" fill="#cfdcef" font-size="11" text-anchor="middle">[cash · cardholder]</text>
+        <text class="bal" x="1280" y="200" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" data-acc="card" data-base="500">EGP 500</text>
+      </g></a>
+
+      <path id="p1" d="M 340,170 L 1140,170" class="step-arc" data-step="1"/>
+      <text x="680" y="160" font-size="12" fill="#444">Ledger::CreateTransaction(suspense → chargeback_account, disputed)</text>
+
+      <g class="token" id="tok-1"><circle r="16" fill="#1168BD"/><text fill="#fff" font-size="11" text-anchor="middle" dy="4">2,500</text></g>
+    </svg>
+  </div>
+
+  <div class="integrity" id="integrity">
+    <h3 style="margin:0 0 6px;color:#065f46;font-size:14px;" id="integrity-h">Ledger integrity check</h3>
+    <div id="integrity-body">Awaiting playback…</div>
+  </div>
+
+  <h2>Step-by-step narrative</h2>
+  <table>
+    <thead><tr><th>#</th><th>Actor</th><th>Action</th><th>Amount</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr class="step-row" data-step="1"><td>1</td><td>Settle</td><td>Approve and credit cardholder</td><td class="amt">2,500.00</td><td>suspense</td><td>cash (cardholder)</td><td>posted</td></tr>
+      <tr><td colspan="7" class="step-detail" data-detail="1">
+        <strong>Source</strong>: <code>Chargebacks::Settle#process_transfer</code><br/>
+        <strong>Lock</strong>: <code>chargeback.with_lock { raise unless pending? }</code><br/>
+        <strong>Ledger call</strong>: <code>Ledger::CreateTransaction.new(suspense_account, chargeback_account, chargeback.disputed, referrer: chargeback, process_by: :update_balance, request_options: { unload_option: :mismatch })</code><br/>
+        <strong>Journal</strong>: <a href="journal-entries.html#chargeback-settle">Dr cash (cardholder) / Cr suspense · EGP 2,500</a><br/>
+        <strong>DB</strong>: <code>chargebacks.status</code> → <code>completed</code> on success, <code>failed</code> otherwise. <code>ledger_transactions</code>, <code>ledger_entries</code>, <code>accounts</code> updated atomically.<br/>
+        <strong>Side-effects</strong>: <code>Chargebacks::SmsSenderJob.perform_later(chargeback.id)</code> on success.
+      </td></tr>
+    </tbody>
+  </table>
+
+  <h2>Double-entry journal</h2>
+  <table>
+    <thead><tr><th>Step</th><th>Dr Account</th><th>Cr Account</th><th>Amount (EGP)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>cash (cardholder)</td><td>suspense</td><td class="amt">2,500.00</td></tr>
+      <tr style="background:#f1f4f8;"><td colspan="3"><strong>Σ Debits</strong></td><td class="amt"><strong>2,500.00</strong></td></tr>
+      <tr style="background:#f1f4f8;"><td colspan="3"><strong>Σ Credits</strong></td><td class="amt"><strong>2,500.00</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Pre-conditions</h2>
+  <ul style="font-size:14px;">
+    <li><code>chargeback.status == pending</code> (enforced under <code>with_lock</code>)</li>
+    <li>Params include <code>status: 'approved'</code></li>
+    <li>A wallet exists matching <code>chargeback.decorated_fast_message.account_id</code></li>
+    <li>System <code>suspense</code> account exists (<code>Account.suspense.first!</code>)</li>
+  </ul>
+
+  <h2>Post-conditions</h2>
+  <ul style="font-size:14px;">
+    <li><code>chargeback.status == completed</code> on success, <code>failed</code> otherwise</li>
+    <li>One <code>LedgerTransaction</code> with referrer = chargeback</li>
+    <li>SMS notification job enqueued on success</li>
+  </ul>
+
+  <h2>Failure modes</h2>
+  <table>
+    <thead><tr><th>Failure</th><th>Where</th><th>Effect</th><th>Reversal</th></tr></thead>
+    <tbody>
+      <tr><td>Chargeback not pending</td><td><code>ensure_chargeback_status!</code></td><td>Raises <code>ArgumentError</code>; rescue adds <code>:invalid_chargeback_approval</code> on errors; no ledger write</td><td>—</td></tr>
+      <tr><td>Wallet not found</td><td><code>chargeback_account</code> lookup</td><td><code>ActiveRecord::RecordNotFound</code> via <code>first!</code></td><td>—</td></tr>
+      <tr><td>Ledger validation fails</td><td>Inside <code>CreateTransaction</code></td><td>Returns false; <code>chargeback.status</code> set to <code>failed</code></td><td>None needed (no entries posted)</td></tr>
+      <tr><td>Erroneous approval after posting</td><td>Operator decision</td><td>n/a</td><td><a href="flow-business-reversal.html">Reversal flow</a></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Reconciliation impact</h2>
+  <ul style="font-size:14px;">
+    <li>Suspense should drain to zero in steady state. Persistent positive balance signals stuck or lost approvals.</li>
+    <li>Each settled chargeback creates exactly one <code>LedgerTransaction</code>. Counting these against externally-reported chargeback counts is the recon check.</li>
+  </ul>
+
+<script>
+(function(){
+  const svg = document.getElementById('flowSvg');
+  const stepNow = document.getElementById('step-now');
+  const stepTotal = document.getElementById('step-total');
+  const integ = document.getElementById('integrity');
+  const integH = document.getElementById('integrity-h');
+  const integBody = document.getElementById('integrity-body');
+
+  const balances = { sus: 1000000, card: 500 };
+  const baseBalances = Object.assign({}, balances);
+  function fmt(n){ return 'EGP ' + n.toLocaleString('en-US'); }
+  function setBal(acc, val){ balances[acc] = val; const t = svg.querySelector(`text.bal[data-acc="${acc}"]`); if (t) t.textContent = fmt(val); }
+  function resetBalances(){ Object.keys(baseBalances).forEach(k => setBal(k, baseBalances[k])); }
+
+  function buildSteps(s){
+    return [{ id:1, path:'#p1', tok:'#tok-1', amount:2500, from:'sus', to:'card', failed: s === 'failure' }];
+  }
+  let scenario='happy', steps = buildSteps(scenario);
+  stepTotal.textContent = steps.length;
+  let state = { idx:0, playing:false, speed:1, raf:null };
+
+  function setActive(i){
+    document.querySelectorAll('svg.flow .step-arc').forEach(a => {
+      const s = parseInt(a.getAttribute('data-step'),10);
+      a.classList.toggle('active', s === i);
+    });
+    stepNow.textContent = i;
+  }
+
+  function moveToken(tokSel, pathSel, durMs, failed, onDone){
+    const tok = svg.querySelector(tokSel); const path = svg.querySelector(pathSel);
+    if (!tok || !path) return onDone && onDone();
+    tok.classList.add('show');
+    if (failed) tok.classList.add('failed'); else tok.classList.remove('failed');
+    const len = path.getTotalLength(); const localStart = performance.now();
+    function frame(now){
+      if (!state.playing) return;
+      const elapsed = (now - localStart) * state.speed;
+      let p = Math.min(elapsed / durMs, 1);
+      if (failed && p > 0.6) { p = 0.6 - (p - 0.6) * 1.5; if (p <= 0) p = 0; }
+      const pt = path.getPointAtLength(p * len);
+      tok.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+      if ((!failed && p < 1) || (failed && p > 0)) state.raf = requestAnimationFrame(frame);
+      else { if (!failed) tok.classList.remove('show'); onDone && onDone(); }
+    }
+    state.raf = requestAnimationFrame(frame);
+  }
+
+  function applyEffects(s){
+    if (s.failed){
+      const arc = document.querySelector(`svg.flow .step-arc[data-step="${s.id}"]`);
+      if (arc) arc.classList.add('failed');
+    } else {
+      setBal(s.from, balances[s.from] - s.amount);
+      setBal(s.to, balances[s.to] + s.amount);
+    }
+    updateIntegrity();
+  }
+
+  function updateIntegrity(){
+    let dr = 0, cr = 0;
+    for (let i=0; i<state.idx; i++){
+      const s = steps[i]; if (s.failed) continue;
+      dr += s.amount; cr += s.amount;
+    }
+    const susDelta = balances.sus - baseBalances.sus;
+    const balanced = dr === cr;
+    integ.classList.toggle('bad', !balanced);
+    integH.textContent = balanced ? 'Ledger integrity check ✓' : 'Ledger integrity check ✗';
+    integBody.innerHTML = 'Σ debits = <strong>EGP ' + dr.toLocaleString('en-US') + '</strong>, Σ credits = <strong>EGP ' + cr.toLocaleString('en-US') + '</strong>. Suspense net change: <strong>EGP ' + susDelta.toLocaleString('en-US') + '</strong>.';
+  }
+
+  function playStep(){
+    if (state.idx >= steps.length){ pause(); return; }
+    const s = steps[state.idx]; setActive(s.id);
+    moveToken(s.tok, s.path, 1000/state.speed, s.failed, () => {
+      applyEffects(s); state.idx += 1;
+      if (state.playing) setTimeout(playStep, 200/state.speed);
+    });
+  }
+  function play(){ if (state.idx >= steps.length) restart(); state.playing=true; document.getElementById('btn-play').textContent='⏸'; playStep(); }
+  function pause(){ state.playing=false; document.getElementById('btn-play').textContent='▶'; if (state.raf) cancelAnimationFrame(state.raf); }
+  function restart(){ pause(); resetBalances(); state.idx=0; setActive(0); document.querySelectorAll('svg.flow .step-arc').forEach(a=>a.classList.remove('failed','active')); document.querySelectorAll('svg.flow .token').forEach(t=>t.classList.remove('show','failed')); updateIntegrity(); }
+  function step(){ if (state.playing) return; if (state.idx >= steps.length) restart(); const s = steps[state.idx]; setActive(s.id); moveToken(s.tok, s.path, 800/state.speed, s.failed, () => { applyEffects(s); state.idx += 1; }); }
+
+  document.querySelector('[data-act="play"]').addEventListener('click', () => state.playing ? pause() : play());
+  document.querySelector('[data-act="restart"]').addEventListener('click', restart);
+  document.querySelector('[data-act="step"]').addEventListener('click', step);
+  document.querySelector('[data-act="speed"]').addEventListener('change', e => state.speed = parseFloat(e.target.value));
+  document.querySelector('[data-act="scenario"]').addEventListener('change', e => { scenario = e.target.value; steps = buildSteps(scenario); stepTotal.textContent = steps.length; restart(); });
+
+  document.querySelectorAll('.step-row').forEach(r => r.addEventListener('click', () => {
+    const n = r.getAttribute('data-step'); const det = document.querySelector(`.step-detail[data-detail="${n}"]`); if (det) det.classList.toggle('open');
+  }));
+  updateIntegrity();
+})();
+</script>
+</div>
+</body>
+</html>

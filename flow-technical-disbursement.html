@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Disbursement — Technical Flow · PayEngine Ledger</title>
+<style>
+  :root{--c-customer:#1168BD;--c-merchant:#2E8B57;--c-system:#6B46C1;--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);
+       background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;}
+  .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;} h3{font-size:15px;margin-top:18px;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  .toggle-link{float:right;font-size:13px;}
+  .toggle-link a{color:var(--c-customer);text-decoration:none;border:1px solid var(--c-customer);padding:4px 8px;border-radius:4px;}
+  .toggle-link a:hover{background:var(--c-customer);color:#fff;}
+  .player{position:sticky;top:0;background:#fff;border:1px solid #e3e6eb;border-radius:8px;padding:10px 14px;margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+  .player button,.player select{font-size:13px;padding:5px 10px;border:1px solid #d0d4d9;background:#fff;border-radius:4px;cursor:pointer;}
+  .player .step-counter{font-weight:600;font-size:13px;color:#333;margin-left:auto;}
+  .stage{border:1px solid #e3e6eb;background:#fafbfc;border-radius:8px;padding:10px;}
+  svg.flow{display:block;width:100%;height:auto;}
+  svg.flow .lane{cursor:default;}
+  svg.flow .msg{stroke:#bbb;stroke-width:1.5;fill:none;stroke-dasharray:3 3;}
+  svg.flow .msg.active{stroke:#1168BD;stroke-dasharray:none;}
+  svg.flow .msg.failed{stroke:#dc2626;}
+  svg.flow .token{opacity:0;}
+  svg.flow .token.show{opacity:1;}
+  svg.flow .token.failed circle{fill:#dc2626;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  pre{background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:6px;font-size:12px;overflow:auto;}
+  .pill{display:inline-block;background:#eef2f6;border-radius:10px;padding:1px 8px;font-size:11px;margin-right:4px;}
+  .step-detail{display:none;background:#f7faff;border-left:3px solid var(--c-customer);padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 0;}
+  .step-detail.open{display:block;}
+  .step-row{cursor:pointer;}
+  .step-row:hover{background:#f7faff;}
+  .tooltip{position:absolute;background:#222;color:#fff;font-size:12px;padding:4px 8px;border-radius:4px;pointer-events:none;display:none;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} .player{display:none;} svg.flow .token{display:none;} svg.flow .msg{stroke:#888;stroke-dasharray:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; Technical flows &gt; <strong>Disbursement</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <span class="toggle-link"><a href="flow-business-disbursement.html">View business flow →</a></span>
+
+  <h1>Disbursement — Technical sequence</h1>
+  <p class="lead">
+    What actually runs when an approved disbursement is processed:
+    HTTP entry through <code>DisbursementsController</code>, async hand-off to
+    <code>Disbursements::Processor</code>, ledger writes through
+    <code>Ledger::CreateTransaction</code>, fan-out per employee via
+    <code>SubProcessor</code>, and side-effects (mailers, SMS jobs, Segment).
+  </p>
+
+  <div class="player" id="player">
+    <button data-act="restart">⏮</button>
+    <button data-act="play" id="btn-play">▶</button>
+    <button data-act="step">⏩</button>
+    <label style="font-size:12px;color:#555;">Speed
+      <select data-act="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+    </label>
+    <label style="font-size:12px;color:#555;">Scenario
+      <select data-act="scenario"><option value="happy" selected>Happy path</option><option value="failure">Lock contention (already in_progress)</option></select>
+    </label>
+    <span class="step-counter">Step <span id="step-now">0</span> of <span id="step-total">0</span></span>
+  </div>
+
+  <div class="stage">
+    <svg class="flow" viewBox="0 0 1500 620" id="seqSvg" xmlns="http://www.w3.org/2000/svg">
+      <!-- Lane headers -->
+      <g font-size="13" font-weight="700" fill="#222">
+        <rect x="40" y="20" width="180" height="36" rx="6" fill="#eef2f6"/>
+        <text x="130" y="44" text-anchor="middle">Client (admin)</text>
+        <rect x="260" y="20" width="180" height="36" rx="6" fill="#dbeafe"/>
+        <text x="350" y="44" text-anchor="middle">Rails API · Controller</text>
+        <rect x="480" y="20" width="180" height="36" rx="6" fill="#fde68a"/>
+        <text x="570" y="44" text-anchor="middle">Sidekiq · Processor</text>
+        <rect x="700" y="20" width="180" height="36" rx="6" fill="#fde68a"/>
+        <text x="790" y="44" text-anchor="middle">Sidekiq · SubProcessor</text>
+        <rect x="920" y="20" width="180" height="36" rx="6" fill="#bbf7d0"/>
+        <text x="1010" y="44" text-anchor="middle">Ledger Service</text>
+        <rect x="1140" y="20" width="180" height="36" rx="6" fill="#e9d5ff"/>
+        <text x="1230" y="44" text-anchor="middle">PostgreSQL</text>
+      </g>
+
+      <!-- Lane lifelines -->
+      <g stroke="#cbd5e1" stroke-dasharray="3 4">
+        <line x1="130" y1="60" x2="130" y2="580"/>
+        <line x1="350" y1="60" x2="350" y2="580"/>
+        <line x1="570" y1="60" x2="570" y2="580"/>
+        <line x1="790" y1="60" x2="790" y2="580"/>
+        <line x1="1010" y1="60" x2="1010" y2="580"/>
+        <line x1="1230" y1="60" x2="1230" y2="580"/>
+      </g>
+
+      <!-- Messages (paths) -->
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+        </marker>
+      </defs>
+
+      <!-- Step 1: client -> API -->
+      <path id="m1" class="msg" data-step="1" d="M 130,100 L 350,100" marker-end="url(#arr)"/>
+      <text x="240" y="92" font-size="11" fill="#333">POST /disbursements/:id/approve</text>
+      <!-- Step 2: API -> Sidekiq enqueue -->
+      <path id="m2" class="msg" data-step="2" d="M 350,150 L 570,150" marker-end="url(#arr)"/>
+      <text x="460" y="142" font-size="11" fill="#333">DisbursementProcessorJob.perform_later</text>
+      <!-- Step 3: Processor -> DB lock -->
+      <path id="m3" class="msg" data-step="3" d="M 570,200 L 1230,200" marker-end="url(#arr)"/>
+      <text x="900" y="192" font-size="11" fill="#333">disbursement.with_lock { in_progress! }</text>
+      <!-- Step 4: Processor -> Ledger (load) -->
+      <path id="m4" class="msg" data-step="4" d="M 570,250 L 1010,250" marker-end="url(#arr)"/>
+      <text x="790" y="242" font-size="11" fill="#333">Ledger::CreateTransaction(corp → disb, net_total)</text>
+      <!-- Step 5: Ledger -> DB -->
+      <path id="m5" class="msg" data-step="5" d="M 1010,290 L 1230,290" marker-end="url(#arr)"/>
+      <text x="1120" y="282" font-size="11" fill="#333">INSERT ledger_transactions, ledger_entries</text>
+      <!-- Step 6: Processor -> SubProcessor (per employee) -->
+      <path id="m6" class="msg" data-step="6" d="M 570,340 L 790,340" marker-end="url(#arr)"/>
+      <text x="680" y="332" font-size="11" fill="#333">SubProcessor.new(wage, disb_acc).call · ×N</text>
+      <!-- Step 7: SubProcessor -> Ledger -->
+      <path id="m7" class="msg" data-step="7" d="M 790,390 L 1010,390" marker-end="url(#arr)"/>
+      <text x="900" y="382" font-size="11" fill="#333">Ledger::CreateTransaction(disb → emp, net)</text>
+      <!-- Step 8: Ledger -> DB -->
+      <path id="m8" class="msg" data-step="8" d="M 1010,430 L 1230,430" marker-end="url(#arr)"/>
+      <text x="1120" y="422" font-size="11" fill="#333">INSERT entries · UPDATE accounts</text>
+      <!-- Step 9: Processor finalise -->
+      <path id="m9" class="msg" data-step="9" d="M 570,490 L 1230,490" marker-end="url(#arr)"/>
+      <text x="900" y="482" font-size="11" fill="#333">UPDATE disbursements SET status = 'completed'</text>
+      <!-- Step 10: side-effects -->
+      <path id="m10" class="msg" data-step="10" d="M 570,540 L 350,540" marker-end="url(#arr)"/>
+      <text x="460" y="532" font-size="11" fill="#333">DisburserMailer · SmsSenderJob · Segment</text>
+
+      <!-- Tokens -->
+      <g class="token" id="tok-1"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-2"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-3"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-4"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-5"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-6"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-7"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-8"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-9"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-10"><circle r="9" fill="#1168BD"/></g>
+    </svg>
+    <div class="tooltip" id="tt"></div>
+  </div>
+
+  <h2>Step-by-step (technical)</h2>
+  <table id="narrative">
+    <thead><tr><th>#</th><th>Component</th><th>Action</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr class="step-row" data-step="1"><td>1</td><td>HTTP API</td><td>POST /disbursements/:id/approve</td><td>Auth via dopay-conductor; Pundit policy <code>DisbursementPolicy#approve?</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="1">
+        <strong>HTTP</strong> POST /disbursements/:id/approve <span class="pill">timeout: client-side</span><br/>
+        <strong>Idempotency</strong>: Pundit + state check (<code>approved</code> can transition once); DB constraint stops repeats.<br/>
+        <strong>Response</strong>: 200 with disbursement payload; the long-running work is enqueued.<br/>
+        <strong>Logs</strong>: standard Rails request log, controller name + disbursement id.
+      </td></tr>
+      <tr class="step-row" data-step="2"><td>2</td><td>Controller</td><td>Enqueue background job</td><td>Sidekiq enqueue with disbursement_id only — never the full payload</td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="2">
+        <strong>Sidekiq</strong>: job arguments are just the id; the worker re-loads the model.<br/>
+        <strong>Retry</strong>: inherits from <code>ApplicationJob</code> (Sidekiq default retries on exceptions).<br/>
+        <strong>Idempotency</strong>: enforced at step 3 by <code>with_lock</code> + <code>in_progress?</code> check.
+      </td></tr>
+      <tr class="step-row" data-step="3"><td>3</td><td>Processor (DB)</td><td>SELECT … FOR UPDATE on disbursements row</td><td><code>disbursement.with_lock { raise UNIQUENESS_ERROR if in_progress? else in_progress! }</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="3">
+        <strong>SQL</strong>: <code>SELECT * FROM disbursements WHERE id=$1 FOR UPDATE</code> (Rails <code>with_lock</code>).<br/>
+        <strong>Isolation</strong>: PostgreSQL default (read committed); the row lock is what protects against double-processing.<br/>
+        <strong>Race</strong>: a second concurrent run blocks until the first releases, then reads the new <code>in_progress</code> state and raises <code>UNIQUENESS_ERROR</code>.
+      </td></tr>
+      <tr class="step-row" data-step="4"><td>4</td><td>Processor → Ledger</td><td>Load disbursement account</td><td><code>Ledger::CreateTransaction(corp_acc, disb_acc, net_total, referrer: disbursement)</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="4">
+        <strong>Skipped</strong> when <code>net_total.zero?</code> (early-out in <code>load_into_disbursement</code>).<br/>
+        <strong>Validator</strong>: <code>Ledger::Transactions::Validator</code> runs before entries are persisted.<br/>
+        <strong>Failure</strong>: a <code>RecordInvalid</code> rescue inside <code>CreateTransaction#call</code> sets <code>ledger_transaction.status=:failure</code> and stores errors on the row.
+      </td></tr>
+      <tr class="step-row" data-step="5"><td>5</td><td>Ledger → DB</td><td>INSERT entries, UPDATE balances</td><td>Wrapped in a single <code>ApplicationRecord.transaction</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="5">
+        <strong>Tables</strong>: <code>ledger_transactions</code>, <code>ledger_entries</code>, <code>accounts</code>.<br/>
+        <strong>Sequence</strong>: create transaction (status=pending) → insert two entries (debit_first, then credit) → <code>UpdateLocalAccount</code> per entry → <code>PostBalanceUpdate</code> → <code>transaction.posted!</code>.<br/>
+        <strong>Atomicity</strong>: all-or-nothing via <code>ApplicationRecord.transaction</code>; if balance update or remote post fails, the rescue branch flips <code>status: :failure</code>.<br/>
+        <strong>Constraint</strong>: <code>ledger_transactions.trx_uuid</code> uniqueness prevents duplicates.
+      </td></tr>
+      <tr class="step-row" data-step="6"><td>6</td><td>Processor</td><td>Iterate employee_disbursements</td><td><code>employee_disbursements.includes(employee: :account).each</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="6">
+        <strong>N+1 protection</strong>: explicit <code>includes(employee: :account)</code>.<br/>
+        <strong>Order</strong>: per-employee, sequential — failures of one don't abort the rest (each call is independent).<br/>
+        <strong>Empty-amount short-circuit</strong>: zero-net employees are completed without a ledger transaction.
+      </td></tr>
+      <tr class="step-row" data-step="7"><td>7</td><td>SubProcessor → Ledger</td><td>Pay one employee</td><td><code>Ledger::CreateTransaction(disb_acc, employee.account, net_amount, referrer: wage)</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="7">
+        Sets <code>wage.company_unload = true</code> before the transfer call.<br/>
+        On success → <code>wage.completed!</code> + <code>SmsSenderJob.perform_later</code>.<br/>
+        On failure → <code>wage.failed!</code>; processor still continues with the next employee.
+      </td></tr>
+      <tr class="step-row" data-step="8"><td>8</td><td>Ledger → DB</td><td>Same as step 5, per employee</td><td>One ledger transaction per employee_disbursement</td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="8">
+        Each employee gets its own <code>LedgerTransaction</code> row (referrer is the <code>EmployeeDisbursement</code>), so partial failures are reversible at granular level via <a href="flow-business-reversal.html">Reversal</a>.
+      </td></tr>
+      <tr class="step-row" data-step="9"><td>9</td><td>Processor</td><td>Finalise disbursement</td><td><code>finalise_as :completed | :failed</code> based on per-employee results</td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="9">
+        <strong>Decision</strong>: <code>disburse_employees.all?(&:completed?) ? :completed : :failed</code>.<br/>
+        Updates <code>disbursements.status</code> in a single UPDATE.
+      </td></tr>
+      <tr class="step-row" data-step="10"><td>10</td><td>Side-effects</td><td>Mailer + notification + Segment</td><td><code>DisburserMailer</code>, <code>Notifications::Disbursements::Success</code>, optional <code>Analytics::SegmentPublisherJob</code>; on fail: <code>UnlinkEarnedWagesJob</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="10">
+        These run after the ledger writes commit; failures here do not roll back ledger state.
+      </td></tr>
+    </tbody>
+  </table>
+
+  <h2>HTTP / job contract</h2>
+  <table>
+    <thead><tr><th>Hop</th><th>Method/Mode</th><th>Endpoint / Job</th><th>Idempotency</th><th>Retry</th><th>Timeout</th></tr></thead>
+    <tbody>
+      <tr><td>Client → API</td><td>POST (HTTPS)</td><td><code>/disbursements/:id/approve</code></td><td>State machine guard (<code>approved</code> → <code>in_progress</code>)</td><td>Client retries safe (idempotent state transition)</td><td>Web-tier default (Puma)</td></tr>
+      <tr><td>API → Worker</td><td>Sidekiq enqueue</td><td><code>DisbursementProcessorJob</code></td><td>Lock + <code>in_progress?</code> check</td><td>Sidekiq default 25 retries (ApplicationJob)</td><td>Per-job, default Sidekiq</td></tr>
+      <tr><td>Processor → Ledger</td><td>In-process Ruby</td><td><code>Ledger::CreateTransaction#call</code></td><td><code>trx_uuid</code> uniqueness on LedgerTransaction</td><td>Failure marks row, no implicit retry</td><td>—</td></tr>
+      <tr><td>Ledger → CMS (balance)</td><td>HTTPS</td><td>via <code>ProcessorMediator</code>, e.g. <code>Paymentology::Balances::UpdateWithRetry</code></td><td>CMS-side request id</td><td>Explicit retry-with-backoff for the <code>protected_</code> variant only</td><td>Per HttpClient</td></tr>
+    </tbody>
+  </table>
+
+  <h2>DB transactions</h2>
+  <table>
+    <thead><tr><th>Block</th><th>Tables</th><th>Mode</th><th>Locking</th><th>Rollback behaviour</th></tr></thead>
+    <tbody>
+      <tr><td><code>ensure_processing_uniqueness!</code></td><td><code>disbursements</code></td><td><code>with_lock</code> (<code>FOR UPDATE</code>)</td><td>Row lock on disbursement id</td><td>Lock released on transaction end; raise leaves disbursement state pre-lock</td></tr>
+      <tr><td><code>create_pending_entities!</code></td><td><code>ledger_transactions</code>, <code>ledger_entries</code>, <code>accounts</code></td><td><code>ApplicationRecord.transaction</code> (read committed)</td><td>Implicit row locks on <code>accounts</code> via <code>UpdateLocalAccount</code></td><td>RecordInvalid rescued; LedgerTransaction marked <code>failure</code> with errors</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Events / side-effects emitted</h2>
+  <ul style="font-size:14px;">
+    <li><code>DisburserMailer.new(disbursement).call</code> — sends email summary at finalise.</li>
+    <li><code>Notifications::Disbursements::Success</code> — internal notification at finalise.</li>
+    <li><code>Analytics::SegmentPublisherJob</code> — fired only on completed (with cumulative metrics).</li>
+    <li><code>SmsSenderJob</code> — per-employee on successful pay step.</li>
+    <li><code>UnlinkEarnedWagesJob</code> — only on failed cycles, to detach EWA from this disbursement.</li>
+  </ul>
+
+  <h2>Concurrency concerns</h2>
+  <ul style="font-size:14px;">
+    <li><strong>Double-processing</strong>: prevented by <code>disbursement.with_lock</code> + <code>in_progress?</code> guard. A second worker that picks up the same id either blocks then raises, or sees <code>in_progress</code> and raises immediately.</li>
+    <li><strong>Two Ledger writes from concurrent flows</strong> on the same account: each call goes through its own DB transaction; <code>UpdateLocalAccount</code> writes <code>accounts.posted_balance_cents</code>; concurrent updates serialise on the row lock acquired during the UPDATE. There is no application-level optimistic version field.</li>
+    <li><strong>Sidekiq retry storms</strong>: a transient DB error on the load step can cause a retry. Idempotency relies on <code>trx_uuid</code> uniqueness and on the disbursement state machine — replays of an already-completed disbursement raise <code>UNIQUENESS_ERROR</code> on the lock check.</li>
+  </ul>
+
+  <h2>Failure handling</h2>
+  <ul style="font-size:14px;">
+    <li>Validation failure inside <code>Ledger::CreateTransaction</code> → row flipped to <code>status: :failure</code>, errors persisted on the LedgerTransaction; no entries posted.</li>
+    <li>Per-employee failure → <code>employee_disbursement.status = :failed</code>, processor continues. The cycle finalises as <code>:failed</code> if any employee failed.</li>
+    <li>Failed cycle triggers <code>UnlinkEarnedWagesJob</code>; reversal of any successful employee payments is operator-driven through the <a href="flow-business-reversal.html">Reversal flow</a> (<code>Ledger::RevertTransaction</code>).</li>
+  </ul>
+
+  <h2>Observability</h2>
+  <ul style="font-size:14px;">
+    <li>Standard Rails request logs at the controller layer.</li>
+    <li>Sidekiq job logs with <code>jid</code> and disbursement_id.</li>
+    <li><code>processor_activity_log</code> entries for CMS-bound calls (per CMS log table — <code>paymentology_log</code> / <code>postilion_log</code> / <code>ebc_log</code>).</li>
+    <li><code>LedgerTransaction.transaction_errors</code> column captures validation failures.</li>
+    <li>Segment events at finalise for analytics.</li>
+  </ul>
+
+<script>
+(function(){
+  const svg = document.getElementById('seqSvg');
+  const stepNow = document.getElementById('step-now');
+  const stepTotal = document.getElementById('step-total');
+  const STEPS = [];
+  for (let i=1;i<=10;i++){ STEPS.push({ id:i, path:`#m${i}`, tok:`#tok-${i}`, failed:false }); }
+  let scenario = 'happy';
+  function buildSteps(s){
+    return STEPS.map(st => Object.assign({}, st, { failed: s === 'failure' && st.id === 3 }));
+  }
+  let steps = buildSteps(scenario);
+  stepTotal.textContent = steps.length;
+  let state = { idx:0, playing:false, speed:1, raf:null };
+
+  function setActive(i){
+    document.querySelectorAll('svg.flow .msg').forEach(a => {
+      const s = parseInt(a.getAttribute('data-step'),10);
+      a.classList.toggle('active', s === i);
+    });
+    stepNow.textContent = i;
+  }
+
+  function moveToken(tokSel, pathSel, durMs, failed, onDone){
+    const tok = svg.querySelector(tokSel);
+    const path = svg.querySelector(pathSel);
+    if (!tok || !path) return onDone && onDone();
+    tok.classList.add('show');
+    if (failed) tok.classList.add('failed'); else tok.classList.remove('failed');
+    const len = path.getTotalLength();
+    const localStart = performance.now();
+    function frame(now){
+      if (!state.playing) return;
+      const elapsed = (now - localStart) * state.speed;
+      let p = Math.min(elapsed / durMs, 1);
+      if (failed && p > 0.6) {
+        p = 0.6 - (p - 0.6) * 1.5;
+        if (p <= 0) p = 0;
+      }
+      const pt = path.getPointAtLength(p * len);
+      tok.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+      if ((!failed && p < 1) || (failed && p > 0)) state.raf = requestAnimationFrame(frame);
+      else { if (!failed) tok.classList.remove('show'); onDone && onDone(); }
+    }
+    state.raf = requestAnimationFrame(frame);
+  }
+
+  function playStep(){
+    if (state.idx >= steps.length){ pause(); return; }
+    const s = steps[state.idx];
+    setActive(s.id);
+    moveToken(s.tok, s.path, 900 / state.speed, s.failed, () => {
+      if (s.failed){
+        const arc = document.querySelector(`svg.flow .msg[data-step="${s.id}"]`);
+        if (arc) arc.classList.add('failed');
+        // failure stops further steps
+        pause();
+        return;
+      }
+      state.idx += 1;
+      if (state.playing) setTimeout(playStep, 200 / state.speed);
+    });
+  }
+  function play(){ if (state.idx >= steps.length) restart(); state.playing=true; document.getElementById('btn-play').textContent='⏸'; playStep(); }
+  function pause(){ state.playing=false; document.getElementById('btn-play').textContent='▶'; if (state.raf) cancelAnimationFrame(state.raf); }
+  function restart(){ pause(); state.idx=0; setActive(0); document.querySelectorAll('svg.flow .msg').forEach(a=>a.classList.remove('failed','active')); document.querySelectorAll('svg.flow .token').forEach(t=>t.classList.remove('show','failed')); }
+  function step(){ if (state.playing) return; if (state.idx >= steps.length) restart(); const s = steps[state.idx]; setActive(s.id); moveToken(s.tok, s.path, 700/state.speed, s.failed, () => { state.idx += 1; }); }
+
+  document.querySelector('[data-act="play"]').addEventListener('click', () => state.playing ? pause() : play());
+  document.querySelector('[data-act="restart"]').addEventListener('click', restart);
+  document.querySelector('[data-act="step"]').addEventListener('click', step);
+  document.querySelector('[data-act="speed"]').addEventListener('change', e => state.speed = parseFloat(e.target.value));
+  document.querySelector('[data-act="scenario"]').addEventListener('change', e => { scenario = e.target.value; steps = buildSteps(scenario); stepTotal.textContent = steps.length; restart(); });
+
+  // Step row expansion
+  document.querySelectorAll('.step-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const n = row.getAttribute('data-step');
+      const det = document.querySelector(`.step-detail[data-detail="${n}"]`);
+      if (det) det.classList.toggle('open');
+    });
+  });
+})();
+</script>
+</div>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>corporate · Account · PayEngine Ledger</title>
+<style>
+  :root{--c-customer:#1168BD;--c-merchant:#2E8B57;--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;} .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;color:#fff;font-weight:600;vertical-align:middle;margin-left:8px;background:#2E8B57;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; Accounts &gt; <strong>corporate</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <h1>corporate <span class="badge">Company-owned</span></h1>
+  <p class="lead">
+    The company's primary funding pool. Disbursements draw down from here into the per-cycle
+    <code>disbursement</code> holding account.
+  </p>
+
+  <h2>Definition</h2>
+  <table>
+    <tbody>
+      <tr><th>Account.type</th><td><code>corporate</code></td></tr>
+      <tr><th>Accountable</th><td><code>Company</code></td></tr>
+      <tr><th>System account?</th><td>No</td></tr>
+      <tr><th>Tracked balances</th><td><code>posted_balance_cents</code>, <code>available_balance_cents</code></td></tr>
+      <tr><th>Convenience</th><td><code>company.corporate_account</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Flows that touch this account</h2>
+  <table>
+    <thead><tr><th>Flow</th><th>Direction</th><th>Driver</th></tr></thead>
+    <tbody>
+      <tr><td><a href="flow-business-disbursement.html">Salary disbursement</a> · Step 1 (load)</td><td>Credit (debit on the disbursement side)</td><td><code>Disbursements::Processor#load_into_disbursement</code></td></tr>
+      <tr><td><a href="flow-business-reversal.html">Reversal</a></td><td>Either</td><td><code>Ledger::RevertTransaction</code> when reverting a disbursement load</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Notes</h2>
+  <ul style="font-size:14px;">
+    <li>Initial funding (top-up of corporate from a bank rail) is not modelled in the ledger via <code>Ledger::CreateTransaction</code> in the current repo.</li>
+    <li><code>load_into_disbursement</code> short-circuits when <code>disbursement.net_total.zero?</code>.</li>
+  </ul>
+</div>
+</body>
+</html>

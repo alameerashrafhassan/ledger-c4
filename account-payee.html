@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>payee · Account · PayEngine Ledger</title>
+<style>
+  :root{--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;} .crumbs a{color:#1168BD;text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:#1168BD;text-decoration:none;padding:5px 9px;border:1px solid #1168BD;border-radius:4px;}
+  .back:hover{background:#1168BD;color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;color:#fff;font-weight:600;vertical-align:middle;margin-left:8px;background:#6B7280;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  .warn{padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;margin-top:10px;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; Accounts &gt; <strong>payee</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <h1>payee <span class="badge">External mirror</span></h1>
+  <p class="lead">
+    External payee account type. Defined in <code>Account::ACCOUNT_TYPES</code>.
+  </p>
+
+  <div class="warn">
+    <strong>No documented flow currently writes to this account via <code>Ledger::CreateTransaction</code>.</strong>
+    The type is enumerated on <code>Account</code> but not used by any ledger service in the repo.
+  </div>
+
+  <h2>Definition</h2>
+  <table>
+    <tbody>
+      <tr><th>Account.type</th><td><code>payee</code></td></tr>
+      <tr><th>System account?</th><td>No (not in <code>system_account?</code>)</td></tr>
+      <tr><th>Local?</th><td>No (not in <code>local?</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Flows that touch this account</h2>
+  <p class="lead">None today.</p>
+</div>
+</body>
+</html>

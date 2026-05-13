@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chargeback — Technical Flow · PayEngine Ledger</title>
+<style>
+  :root{--c-customer:#1168BD;--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;} .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  .toggle-link{float:right;font-size:13px;}
+  .toggle-link a{color:var(--c-customer);text-decoration:none;border:1px solid var(--c-customer);padding:4px 8px;border-radius:4px;}
+  .toggle-link a:hover{background:var(--c-customer);color:#fff;}
+  .player{position:sticky;top:0;background:#fff;border:1px solid #e3e6eb;border-radius:8px;padding:10px 14px;margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:10;}
+  .player button,.player select{font-size:13px;padding:5px 10px;border:1px solid #d0d4d9;background:#fff;border-radius:4px;cursor:pointer;}
+  .player .step-counter{font-weight:600;font-size:13px;color:#333;margin-left:auto;}
+  .stage{border:1px solid #e3e6eb;background:#fafbfc;border-radius:8px;padding:10px;}
+  svg.flow{display:block;width:100%;height:auto;}
+  svg.flow .msg{stroke:#bbb;stroke-width:1.5;fill:none;stroke-dasharray:3 3;}
+  svg.flow .msg.active{stroke:#1168BD;stroke-dasharray:none;}
+  svg.flow .msg.failed{stroke:#dc2626;}
+  svg.flow .token{opacity:0;} svg.flow .token.show{opacity:1;} svg.flow .token.failed circle{fill:#dc2626;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  .step-detail{display:none;background:#f7faff;border-left:3px solid var(--c-customer);padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 0;}
+  .step-detail.open{display:block;}
+  .step-row{cursor:pointer;}.step-row:hover{background:#f7faff;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} .player{display:none;} svg.flow .token{display:none;} svg.flow .msg{stroke:#888;stroke-dasharray:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; Technical flows &gt; <strong>Chargeback</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <span class="toggle-link"><a href="flow-business-chargeback.html">View business flow →</a></span>
+
+  <h1>Chargeback — Technical sequence</h1>
+  <p class="lead">
+    Settlement runs synchronously inside the controller (no Sidekiq hop). The flow is:
+    <code>ChargebacksController</code> → <code>Chargebacks::Settle</code> →
+    <code>Ledger::CreateTransaction</code>; an SMS notification job is enqueued only after
+    the ledger commit succeeds.
+  </p>
+
+  <div class="player">
+    <button data-act="restart">⏮</button>
+    <button data-act="play" id="btn-play">▶</button>
+    <button data-act="step">⏩</button>
+    <label style="font-size:12px;color:#555;">Speed
+      <select data-act="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+    </label>
+    <label style="font-size:12px;color:#555;">Scenario
+      <select data-act="scenario"><option value="happy" selected>Happy path</option><option value="failure">Already non-pending (lock raises)</option></select>
+    </label>
+    <span class="step-counter">Step <span id="step-now">0</span> of <span id="step-total">0</span></span>
+  </div>
+
+  <div class="stage">
+    <svg class="flow" viewBox="0 0 1500 500" id="seqSvg" xmlns="http://www.w3.org/2000/svg">
+      <g font-size="13" font-weight="700" fill="#222">
+        <rect x="40" y="20" width="180" height="36" rx="6" fill="#eef2f6"/><text x="130" y="44" text-anchor="middle">Client (ops)</text>
+        <rect x="280" y="20" width="200" height="36" rx="6" fill="#dbeafe"/><text x="380" y="44" text-anchor="middle">ChargebacksController</text>
+        <rect x="540" y="20" width="200" height="36" rx="6" fill="#bbf7d0"/><text x="640" y="44" text-anchor="middle">Chargebacks::Settle</text>
+        <rect x="800" y="20" width="200" height="36" rx="6" fill="#bbf7d0"/><text x="900" y="44" text-anchor="middle">Ledger::CreateTransaction</text>
+        <rect x="1060" y="20" width="200" height="36" rx="6" fill="#e9d5ff"/><text x="1160" y="44" text-anchor="middle">PostgreSQL</text>
+        <rect x="1320" y="20" width="160" height="36" rx="6" fill="#fde68a"/><text x="1400" y="44" text-anchor="middle">Sidekiq</text>
+      </g>
+      <g stroke="#cbd5e1" stroke-dasharray="3 4">
+        <line x1="130" y1="60" x2="130" y2="460"/>
+        <line x1="380" y1="60" x2="380" y2="460"/>
+        <line x1="640" y1="60" x2="640" y2="460"/>
+        <line x1="900" y1="60" x2="900" y2="460"/>
+        <line x1="1160" y1="60" x2="1160" y2="460"/>
+        <line x1="1400" y1="60" x2="1400" y2="460"/>
+      </g>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+        </marker>
+      </defs>
+      <path id="m1" class="msg" data-step="1" d="M 130,100 L 380,100" marker-end="url(#arr)"/>
+      <text x="220" y="92" font-size="11" fill="#333">PATCH /chargebacks/:id (status=approved)</text>
+      <path id="m2" class="msg" data-step="2" d="M 380,150 L 640,150" marker-end="url(#arr)"/>
+      <text x="470" y="142" font-size="11" fill="#333">Chargebacks::Settle.new(cb, params).call</text>
+      <path id="m3" class="msg" data-step="3" d="M 640,200 L 1160,200" marker-end="url(#arr)"/>
+      <text x="850" y="192" font-size="11" fill="#333">chargeback.with_lock { raise unless pending? }</text>
+      <path id="m4" class="msg" data-step="4" d="M 640,250 L 900,250" marker-end="url(#arr)"/>
+      <text x="730" y="242" font-size="11" fill="#333">Ledger::CreateTransaction(suspense → cardholder, disputed)</text>
+      <path id="m5" class="msg" data-step="5" d="M 900,290 L 1160,290" marker-end="url(#arr)"/>
+      <text x="1000" y="282" font-size="11" fill="#333">INSERT ledger_transactions, ledger_entries; UPDATE accounts</text>
+      <path id="m6" class="msg" data-step="6" d="M 640,340 L 1160,340" marker-end="url(#arr)"/>
+      <text x="850" y="332" font-size="11" fill="#333">UPDATE chargebacks SET status='completed'</text>
+      <path id="m7" class="msg" data-step="7" d="M 640,390 L 1400,390" marker-end="url(#arr)"/>
+      <text x="950" y="382" font-size="11" fill="#333">Chargebacks::SmsSenderJob.perform_later(id)</text>
+
+      <g class="token" id="tok-1"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-2"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-3"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-4"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-5"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-6"><circle r="9" fill="#1168BD"/></g>
+      <g class="token" id="tok-7"><circle r="9" fill="#1168BD"/></g>
+    </svg>
+  </div>
+
+  <h2>Step-by-step</h2>
+  <table>
+    <thead><tr><th>#</th><th>Component</th><th>Action</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr class="step-row" data-step="1"><td>1</td><td>HTTP API</td><td>PATCH /chargebacks/:id with status=approved</td><td>Auth + Pundit; controller hands to <code>Settle</code> synchronously</td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="1"><strong>Idempotency</strong>: state machine — only <code>pending</code> can transition. <strong>Timeout</strong>: web-tier (Puma) defaults; settlement is fast. <strong>Logs</strong>: standard request log.</td></tr>
+      <tr class="step-row" data-step="2"><td>2</td><td>Settle</td><td>Branch on params[:status]</td><td><code>chargeback_approval?</code> → <code>initiate_transfer</code>; else <code>trivial_save</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="2">Non-approval updates pass through <code>chargeback.update params</code> without ledger writes.</td></tr>
+      <tr class="step-row" data-step="3"><td>3</td><td>Settle (DB)</td><td>SELECT … FOR UPDATE on chargebacks row</td><td><code>ensure_chargeback_status!</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="3"><strong>Isolation</strong>: read committed; row-level lock via <code>with_lock</code>. Race outcome: second concurrent approval blocks until first releases, then sees non-pending state and raises <code>ArgumentError</code>; rescue in <code>call</code> adds <code>:invalid_chargeback_approval</code> to errors.</td></tr>
+      <tr class="step-row" data-step="4"><td>4</td><td>Settle → Ledger</td><td>Build the transferer</td><td>Calls <code>Ledger::CreateTransaction</code> with <code>process_by: :update_balance</code> and <code>request_options: { unload_option: :mismatch }</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="4">The <code>process_by</code> option drives downstream CMS-side balance adjustment in <code>PostBalanceUpdate</code>.</td></tr>
+      <tr class="step-row" data-step="5"><td>5</td><td>Ledger → DB</td><td>INSERT entries; UPDATE balances</td><td>Inside <code>ApplicationRecord.transaction</code></td></tr>
+      <tr><td colspan="4" class="step-detail" data-detail="5">Tables: <code>ledger_transactions</code>, <code>ledger_entries</code>, <code>accounts</code>. Validator runs first; failure flips <code>status: :failure</code>.</td></tr>
+      <tr class="step-row" data-step="6"><td>6</td><td>Settle</td><td>UPDATE chargebacks.status</td><td><code>completed</code> if <code>transferer.call</code> truthy, else <code>failed</code></td></tr>
+      <tr class="step-row" data-step="7"><td>7</td><td>Settle</td><td>Enqueue SMS</td><td>Only on <code>completed</code> with empty errors</td></tr>
+    </tbody>
+  </table>
+
+  <h2>HTTP / call contract</h2>
+  <table>
+    <thead><tr><th>Hop</th><th>Method/Mode</th><th>Endpoint</th><th>Idempotency</th><th>Retry</th></tr></thead>
+    <tbody>
+      <tr><td>Client → API</td><td>PATCH (HTTPS)</td><td><code>/chargebacks/:id</code></td><td>State guard (only <code>pending</code> transitions)</td><td>Client-driven; safe to retry</td></tr>
+      <tr><td>Settle → Ledger</td><td>In-process Ruby</td><td><code>Ledger::CreateTransaction#call</code></td><td><code>trx_uuid</code> uniqueness</td><td>None implicit</td></tr>
+      <tr><td>Settle → Sidekiq</td><td>Enqueue</td><td><code>Chargebacks::SmsSenderJob</code></td><td>Only fires once on success</td><td>Sidekiq default</td></tr>
+    </tbody>
+  </table>
+
+  <h2>DB transactions</h2>
+  <table>
+    <thead><tr><th>Block</th><th>Tables</th><th>Mode</th><th>Locking</th><th>Rollback</th></tr></thead>
+    <tbody>
+      <tr><td><code>ensure_chargeback_status!</code></td><td><code>chargebacks</code></td><td><code>with_lock</code></td><td>Row lock on chargeback id</td><td>Raise leaves chargeback as-was</td></tr>
+      <tr><td><code>create_pending_entities!</code></td><td><code>ledger_transactions</code>, <code>ledger_entries</code>, <code>accounts</code></td><td><code>ApplicationRecord.transaction</code></td><td>Row locks on accounts during balance UPDATE</td><td>RecordInvalid → status=:failure on the LedgerTransaction</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Events / side-effects</h2>
+  <ul style="font-size:14px;">
+    <li><code>Chargebacks::SmsSenderJob.perform_later(chargeback.id)</code> — only on success.</li>
+    <li>No external event bus emission found in the chargeback path.</li>
+  </ul>
+
+  <h2>Concurrency concerns</h2>
+  <ul style="font-size:14px;">
+    <li><strong>Double-approval</strong>: two operators clicking simultaneously — second blocked at <code>with_lock</code>, then sees non-pending and is rejected.</li>
+    <li><strong>Suspense balance contention</strong>: many chargebacks settling in parallel all touch the suspense row. Updates serialise on <code>accounts</code> row locks during <code>UpdateLocalAccount</code>.</li>
+  </ul>
+
+  <h2>Failure handling</h2>
+  <ul style="font-size:14px;">
+    <li>Lock-stage failure: rescue in <code>call</code> attaches <code>:invalid_chargeback_approval</code>; no DB writes.</li>
+    <li>Ledger validation failure: <code>chargeback.status</code> set to <code>failed</code>; <code>LedgerTransaction.status</code> = <code>failure</code>.</li>
+    <li>Erroneous-but-posted approval: reverse via <a href="flow-business-reversal.html">Reversal</a>.</li>
+  </ul>
+
+  <h2>Observability</h2>
+  <ul style="font-size:14px;">
+    <li>Standard Rails request logs and Sidekiq worker logs (for the SMS job).</li>
+    <li>Per-CMS log table entries from any downstream CMS balance update.</li>
+    <li><code>chargebacks.status</code> + <code>ledger_transactions.transaction_errors</code> are the canonical post-mortem signals.</li>
+  </ul>
+
+<script>
+(function(){
+  const svg = document.getElementById('seqSvg');
+  const stepNow = document.getElementById('step-now');
+  const stepTotal = document.getElementById('step-total');
+  const STEPS = [];
+  for (let i=1;i<=7;i++){ STEPS.push({ id:i, path:`#m${i}`, tok:`#tok-${i}`, failed:false }); }
+  function buildSteps(s){ return STEPS.map(st => Object.assign({}, st, { failed: s === 'failure' && st.id === 3 })); }
+  let scenario='happy', steps=buildSteps(scenario); stepTotal.textContent = steps.length;
+  let state={idx:0,playing:false,speed:1,raf:null};
+  function setActive(i){ document.querySelectorAll('svg.flow .msg').forEach(a => a.classList.toggle('active', parseInt(a.getAttribute('data-step'),10)===i)); stepNow.textContent=i; }
+  function moveToken(tokSel,pathSel,durMs,failed,onDone){
+    const tok=svg.querySelector(tokSel),path=svg.querySelector(pathSel); if(!tok||!path) return onDone&&onDone();
+    tok.classList.add('show'); if (failed) tok.classList.add('failed'); else tok.classList.remove('failed');
+    const len=path.getTotalLength(),localStart=performance.now();
+    function frame(now){
+      if (!state.playing) return;
+      const elapsed=(now-localStart)*state.speed; let p=Math.min(elapsed/durMs,1);
+      if (failed && p>0.6){ p=0.6-(p-0.6)*1.5; if (p<=0) p=0; }
+      const pt=path.getPointAtLength(p*len); tok.setAttribute('transform',`translate(${pt.x},${pt.y})`);
+      if ((!failed && p<1) || (failed && p>0)) state.raf=requestAnimationFrame(frame);
+      else { if (!failed) tok.classList.remove('show'); onDone && onDone(); }
+    }
+    state.raf=requestAnimationFrame(frame);
+  }
+  function playStep(){
+    if (state.idx>=steps.length){ pause(); return; }
+    const s=steps[state.idx]; setActive(s.id);
+    moveToken(s.tok,s.path,900/state.speed,s.failed,()=>{
+      if (s.failed){ const arc=document.querySelector(`svg.flow .msg[data-step="${s.id}"]`); if (arc) arc.classList.add('failed'); pause(); return; }
+      state.idx+=1; if (state.playing) setTimeout(playStep,200/state.speed);
+    });
+  }
+  function play(){ if (state.idx>=steps.length) restart(); state.playing=true; document.getElementById('btn-play').textContent='⏸'; playStep(); }
+  function pause(){ state.playing=false; document.getElementById('btn-play').textContent='▶'; if (state.raf) cancelAnimationFrame(state.raf); }
+  function restart(){ pause(); state.idx=0; setActive(0); document.querySelectorAll('svg.flow .msg').forEach(a=>a.classList.remove('failed','active')); document.querySelectorAll('svg.flow .token').forEach(t=>t.classList.remove('show','failed')); }
+  function step(){ if (state.playing) return; if (state.idx>=steps.length) restart(); const s=steps[state.idx]; setActive(s.id); moveToken(s.tok,s.path,700/state.speed,s.failed,()=>{ state.idx+=1; }); }
+  document.querySelector('[data-act="play"]').addEventListener('click',()=>state.playing?pause():play());
+  document.querySelector('[data-act="restart"]').addEventListener('click',restart);
+  document.querySelector('[data-act="step"]').addEventListener('click',step);
+  document.querySelector('[data-act="speed"]').addEventListener('change',e=>state.speed=parseFloat(e.target.value));
+  document.querySelector('[data-act="scenario"]').addEventListener('change',e=>{ scenario=e.target.value; steps=buildSteps(scenario); stepTotal.textContent=steps.length; restart(); });
+  document.querySelectorAll('.step-row').forEach(r=>r.addEventListener('click',()=>{ const n=r.getAttribute('data-step'); const det=document.querySelector(`.step-detail[data-detail="${n}"]`); if (det) det.classList.toggle('open'); }));
+})();
+</script>
+</div>
+</body>
+</html>

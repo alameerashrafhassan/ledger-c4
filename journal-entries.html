@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Journal Entries · PayEngine Ledger</title>
+<style>
+  :root{--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;--c-customer:#1168BD;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;} .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:36px;font-size:20px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;} h3{font-size:15px;margin-top:18px;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  td.amt{font-variant-numeric:tabular-nums;text-align:right;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  .anchor{padding-top:16px;border-top:1px dashed #e3e6eb;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; <strong>Journal entries</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+
+  <h1>Journal entry reference</h1>
+  <p class="lead">
+    Every Dr/Cr template that exists in the codebase today, anchored so flow pages can deep-link to
+    the relevant pattern. Each pattern is keyed by the <code>Ledger::CreateTransaction</code>
+    call-site that produces it.
+  </p>
+
+  <h2 id="disbursement-load">Pattern: disbursement load</h2>
+  <div class="anchor">
+    <p class="lead">
+      Loads the disbursement holding account from the company's corporate account in one
+      <code>LedgerTransaction</code>.
+    </p>
+    <table>
+      <thead><tr><th>Dr</th><th>Cr</th><th>Amount</th><th>Currency</th><th>Source</th><th>Referrer</th></tr></thead>
+      <tbody>
+        <tr><td>disbursement</td><td>corporate</td><td class="amt">net_total</td><td>EGP</td><td><code>Disbursements::Processor#load_into_disbursement</code></td><td><code>Disbursement</code></td></tr>
+      </tbody>
+    </table>
+    <p class="lead">Skipped when <code>disbursement.net_total.zero?</code>. See <a href="flow-business-disbursement.html">Disbursement business flow</a>.</p>
+  </div>
+
+  <h2 id="disbursement-pay">Pattern: disbursement pay-out (per employee)</h2>
+  <div class="anchor">
+    <p class="lead">One <code>LedgerTransaction</code> per employee_disbursement.</p>
+    <table>
+      <thead><tr><th>Dr</th><th>Cr</th><th>Amount</th><th>Currency</th><th>Source</th><th>Referrer</th></tr></thead>
+      <tbody>
+        <tr><td>cash (employee)</td><td>disbursement</td><td class="amt">net_amount</td><td>EGP</td><td><code>Disbursements::SubProcessor#transfer_successful?</code></td><td><code>EmployeeDisbursement</code></td></tr>
+      </tbody>
+    </table>
+    <p class="lead">Empty-amount employees short-circuit (no ledger transaction).</p>
+  </div>
+
+  <h2 id="chargeback-settle">Pattern: chargeback settlement</h2>
+  <div class="anchor">
+    <p class="lead">Credit the cardholder from the system suspense account.</p>
+    <table>
+      <thead><tr><th>Dr</th><th>Cr</th><th>Amount</th><th>Currency</th><th>Source</th><th>Referrer</th></tr></thead>
+      <tbody>
+        <tr><td>cash (cardholder)</td><td>suspense</td><td class="amt">chargeback.disputed</td><td>EGP</td><td><code>Chargebacks::Settle#transferer</code></td><td><code>Chargeback</code></td></tr>
+      </tbody>
+    </table>
+    <p class="lead">Created with <code>process_by: :update_balance</code> and <code>request_options: { unload_option: :mismatch }</code>.</p>
+  </div>
+
+  <h2 id="reversal">Pattern: reversal</h2>
+  <div class="anchor">
+    <p class="lead">A new <code>LedgerTransaction</code> with the original's debit and credit accounts swapped.</p>
+    <table>
+      <thead><tr><th>Original Dr</th><th>Original Cr</th><th>Reversal Dr</th><th>Reversal Cr</th><th>Amount</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>account A</td><td>account B</td><td>account B</td><td>account A</td><td class="amt">original.amount</td><td><code>Ledger::RevertTransaction</code></td></tr>
+      </tbody>
+    </table>
+    <p class="lead">No <code>referrer</code> is passed into the inner <code>CreateTransaction</code>; the linkage is via <code>original.reversal_transaction_id</code>.</p>
+  </div>
+
+  <h2>Validation contract for every pattern</h2>
+  <ul style="font-size:14px;">
+    <li>Every <code>LedgerTransaction</code> has exactly two <code>LedgerEntry</code> rows (one debit, one credit) of equal amount.</li>
+    <li>Both entries share the same <code>ledger_transaction_id</code> and are created inside a single <code>ApplicationRecord.transaction</code>.</li>
+    <li><code>Ledger::Transactions::Validator</code> runs before posting; failures flip the transaction to <code>status: :failure</code> and persist the errors on the row (<code>transaction_errors</code> column).</li>
+    <li><code>LedgerTransaction.trx_uuid</code> is unique — duplicate posts are blocked at the DB level.</li>
+  </ul>
+
+  <h2>Patterns explicitly NOT in the ledger</h2>
+  <ul style="font-size:14px;">
+    <li>Card spend / point-of-sale debits — handled CMS-side, not modelled here.</li>
+    <li>Cashback bookings — <code>Cashbacks::BulkCreator</code> persists the row but does not write to the ledger.</li>
+    <li>Wallet-to-wallet <code>Transfer</code> records — exist as DB rows; no <code>Ledger::CreateTransaction</code> caller in the repo.</li>
+    <li>Corporate top-up from a bank rail — not present as a documented ledger pattern.</li>
+  </ul>
+</div>
+</body>
+</html>

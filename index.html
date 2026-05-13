@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PayEngine Ledger — Money Movement Documentation</title>
+<style>
+  :root {
+    --c-customer:#1168BD; --c-merchant:#2E8B57; --c-system:#6B46C1;
+    --c-fee:#D97706; --c-suspense:#CA8A04; --c-external:#6B7280;
+    --c-bg:#f5f7fa; --c-text:#222; --c-muted:#666;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         margin: 0; background: var(--c-bg); color: var(--c-text);
+         background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+         background-size: 24px 24px; }
+  .page { max-width: 1600px; margin: 0 auto; padding: 28px 36px 80px; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.06); }
+  .crumbs { font-size: 13px; color: var(--c-muted); margin-bottom: 6px; }
+  h1 { margin: 0 0 6px; font-size: 28px; }
+  h2 { margin-top: 36px; font-size: 20px; border-bottom: 1px solid #e3e6eb; padding-bottom: 6px; }
+  .lead { color: var(--c-muted); font-size: 15px; max-width: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .card { border: 1px solid #e3e6eb; border-radius: 8px; padding: 14px 16px; background: #fafbfc; transition: transform .15s, box-shadow .15s; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .card a { color: var(--c-customer); text-decoration: none; font-weight: 600; }
+  .card a:hover { text-decoration: underline; }
+  .card .meta { font-size: 12px; color: var(--c-muted); margin-top: 4px; }
+  .card .desc { font-size: 13px; color: #333; margin-top: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; font-size: 12px; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+  .map { border: 1px solid #e3e6eb; border-radius: 8px; padding: 12px; background: #fafbfc; }
+  svg.map-svg { display: block; width: 100%; height: auto; }
+  svg.map-svg .acc { cursor: pointer; transition: opacity .15s; }
+  svg.map-svg .acc:hover { opacity: 0.85; }
+  svg.map-svg .acc:hover text.name { text-decoration: underline; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th, td { border: 1px solid #e3e6eb; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f4f8; }
+  code { background: #eef2f6; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  @media print { body { background: #fff; } .page { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><strong>Home</strong></div>
+  <h1>PayEngine Ledger — Money Movement</h1>
+  <p class="lead">
+    PayEngine 2.0 is a Rails-based double-entry ledger for the dopay/Liberty card programme.
+    Every money movement is recorded as a <code>LedgerTransaction</code> with two
+    <code>LedgerEntry</code> rows (one debit, one credit) created atomically via
+    <code>Ledger::CreateTransaction</code>. This site documents the flows that actually
+    exist in the codebase — nothing is fabricated.
+  </p>
+
+  <h2>Ledger model in one paragraph</h2>
+  <p class="lead">
+    An <strong>Account</strong> belongs to a Company, a Beneficiary, or is a system account
+    (<code>global_cash</code>, <code>cashback</code>, <code>suspense</code>). Each account
+    tracks <code>posted_balance_cents</code> and <code>available_balance_cents</code>.
+    A <strong>LedgerTransaction</strong> groups two <strong>LedgerEntry</strong> rows
+    (debit + credit, equal amount) and may reference a polymorphic <code>referrer</code>
+    (<code>Disbursement</code>, <code>Chargeback</code>, etc.). Reversals are first-class —
+    <code>LedgerTransaction#reversal_transaction</code> links the original to its inverse.
+    All currency is EGP today; <code>money-rails</code> is in place if that changes.
+  </p>
+
+  <h2>Account map</h2>
+  <p class="lead">Click any account to open its page.</p>
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--c-customer)"></span>Customer-owned (cash)</span>
+    <span><span class="swatch" style="background:var(--c-merchant)"></span>Merchant/Company-owned (corporate, disbursement)</span>
+    <span><span class="swatch" style="background:var(--c-system)"></span>Internal/system (global_cash)</span>
+    <span><span class="swatch" style="background:var(--c-fee)"></span>Fee/cashback</span>
+    <span><span class="swatch" style="background:var(--c-suspense)"></span>Suspense/clearing</span>
+    <span><span class="swatch" style="background:var(--c-external)"></span>External (payee/CMS)</span>
+  </div>
+  <div class="map">
+    <svg class="map-svg" viewBox="0 0 1500 540" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+        </marker>
+        <linearGradient id="cylTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0d4f8f"/><stop offset="1" stop-color="#1168BD"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Group: Company-owned -->
+      <text x="40" y="40" font-size="13" fill="#444" font-weight="700">Company-owned</text>
+      <a href="account-corporate.html"><g class="acc">
+        <rect x="40" y="60" width="220" height="90" rx="10" fill="#2E8B57"/>
+        <text class="name" x="150" y="92" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">corporate</text>
+        <text x="150" y="110" fill="#dfeeda" font-size="11" text-anchor="middle">[Account.type=corporate]</text>
+        <text x="150" y="130" fill="#fff" font-size="11" text-anchor="middle">Company funding pool</text>
+      </g></a>
+      <a href="account-disbursement.html"><g class="acc">
+        <rect x="40" y="170" width="220" height="90" rx="10" fill="#2E8B57"/>
+        <text class="name" x="150" y="202" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">disbursement</text>
+        <text x="150" y="220" fill="#dfeeda" font-size="11" text-anchor="middle">[Account.type=disbursement]</text>
+        <text x="150" y="240" fill="#fff" font-size="11" text-anchor="middle">Per-cycle holding account</text>
+      </g></a>
+
+      <!-- Group: Customer-owned -->
+      <text x="600" y="40" font-size="13" fill="#444" font-weight="700">Beneficiary-owned</text>
+      <a href="account-cash.html"><g class="acc">
+        <rect x="600" y="60" width="220" height="90" rx="10" fill="#1168BD"/>
+        <text class="name" x="710" y="92" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">cash</text>
+        <text x="710" y="110" fill="#cfdcef" font-size="11" text-anchor="middle">[Account.type=cash]</text>
+        <text x="710" y="130" fill="#fff" font-size="11" text-anchor="middle">Employee wallet account</text>
+      </g></a>
+      <a href="account-payee.html"><g class="acc">
+        <rect x="600" y="170" width="220" height="90" rx="10" fill="#6B7280"/>
+        <text class="name" x="710" y="202" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">payee</text>
+        <text x="710" y="220" fill="#e5e7eb" font-size="11" text-anchor="middle">[Account.type=payee]</text>
+        <text x="710" y="240" fill="#fff" font-size="11" text-anchor="middle">External payee mirror</text>
+      </g></a>
+
+      <!-- Group: System -->
+      <text x="1170" y="40" font-size="13" fill="#444" font-weight="700">System (no accountable)</text>
+      <a href="account-global-cash.html"><g class="acc">
+        <rect x="1170" y="60" width="220" height="90" rx="10" fill="#6B46C1"/>
+        <text class="name" x="1280" y="92" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">global_cash</text>
+        <text x="1280" y="110" fill="#e0d4f5" font-size="11" text-anchor="middle">[system]</text>
+        <text x="1280" y="130" fill="#fff" font-size="11" text-anchor="middle">Global cash position</text>
+      </g></a>
+      <a href="account-cashback.html"><g class="acc">
+        <rect x="1170" y="170" width="220" height="90" rx="10" fill="#D97706"/>
+        <text class="name" x="1280" y="202" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">cashback</text>
+        <text x="1280" y="220" fill="#fde6c8" font-size="11" text-anchor="middle">[system]</text>
+        <text x="1280" y="240" fill="#fff" font-size="11" text-anchor="middle">Cashback bookings</text>
+      </g></a>
+      <a href="account-suspense.html"><g class="acc">
+        <rect x="1170" y="280" width="220" height="90" rx="10" fill="#CA8A04"/>
+        <text class="name" x="1280" y="312" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">suspense</text>
+        <text x="1280" y="330" fill="#fef3c7" font-size="11" text-anchor="middle">[system]</text>
+        <text x="1280" y="350" fill="#fff" font-size="11" text-anchor="middle">Clearing for chargebacks</text>
+      </g></a>
+
+      <!-- Flow arrows showing ledger relationships actually used -->
+      <g stroke="#555" stroke-width="1.5" fill="none">
+        <!-- corporate -> disbursement (load) -->
+        <path d="M150,150 L150,170" marker-end="url(#arr)"/>
+        <!-- disbursement -> cash (per employee) -->
+        <path d="M260,210 C 420,210 470,100 600,100" marker-end="url(#arr)"/>
+        <!-- suspense -> cash (chargeback settlement) -->
+        <path d="M1170,320 C 980,320 880,140 820,110" marker-end="url(#arr)"/>
+        <!-- reversal note from any tx back to source -->
+      </g>
+      <g font-size="11" fill="#333">
+        <text x="160" y="165">load (Disbursements::Processor)</text>
+        <text x="370" y="170">pay employee (SubProcessor)</text>
+        <text x="900" y="240">settle (Chargebacks::Settle)</text>
+      </g>
+
+      <text x="40" y="430" font-size="12" fill="var(--c-muted)" font-style="italic">
+        Arrows shown are the only ledger paths actually wired through Ledger::CreateTransaction in the codebase today.
+      </text>
+      <text x="40" y="450" font-size="12" fill="var(--c-muted)" font-style="italic">
+        Reversals invert any of these via Ledger::RevertTransaction; see the Reversal flow.
+      </text>
+      <text x="40" y="470" font-size="12" fill="var(--c-muted)" font-style="italic">
+        Account types defined in Account::ACCOUNT_TYPES but not currently driven by Ledger::CreateTransaction
+      </text>
+      <text x="40" y="488" font-size="12" fill="var(--c-muted)" font-style="italic">
+        (cashback, payee, global_cash) are documented on their account pages with that constraint called out.
+      </text>
+    </svg>
+  </div>
+
+  <h2>Business flows</h2>
+  <div class="grid">
+    <div class="card">
+      <a href="flow-business-disbursement.html">Salary disbursement</a>
+      <div class="meta">Disbursements::Processor + SubProcessor · referrer: Disbursement / EmployeeDisbursement</div>
+      <div class="desc">Company corporate → disbursement → many employee cash accounts. Driven per cycle. EWA settlement folds in at the start.</div>
+    </div>
+    <div class="card">
+      <a href="flow-business-chargeback.html">Chargeback settlement</a>
+      <div class="meta">Chargebacks::Settle · referrer: Chargeback</div>
+      <div class="desc">Approved chargeback credits cardholder from the system suspense account.</div>
+    </div>
+    <div class="card">
+      <a href="flow-business-reversal.html">Ledger reversal</a>
+      <div class="meta">Ledger::RevertTransaction</div>
+      <div class="desc">Any posted transaction can be reversed; original and reversal stay linked via <code>reversal_transaction_id</code>.</div>
+    </div>
+  </div>
+
+  <h2>Technical flows</h2>
+  <div class="grid">
+    <div class="card">
+      <a href="flow-technical-disbursement.html">Disbursement: technical</a>
+      <div class="meta">Controller → Sidekiq → Processor → Ledger → CMS</div>
+      <div class="desc">Sequence diagram, endpoints, locking, events emitted, retry policy, observability.</div>
+    </div>
+    <div class="card">
+      <a href="flow-technical-chargeback.html">Chargeback: technical</a>
+      <div class="meta">ChargebacksController → Settle → Ledger → CMS</div>
+      <div class="desc">Includes the with_lock contract and the chargeback-status state machine.</div>
+    </div>
+    <div class="card">
+      <a href="flow-technical-reversal.html">Reversal: technical</a>
+      <div class="meta">RevertTransaction → CreateTransaction (inverted)</div>
+      <div class="desc">How RevertTransaction picks from/to from the original entries and links the new transaction.</div>
+    </div>
+  </div>
+
+  <h2>Account pages</h2>
+  <div class="grid">
+    <div class="card"><a href="account-cash.html">cash</a><div class="meta">Beneficiary-owned</div><div class="desc">Employee wallet account; credited by SubProcessor and Settle.</div></div>
+    <div class="card"><a href="account-cashback.html">cashback</a><div class="meta">System</div><div class="desc">Defined; not driven by Ledger::CreateTransaction in current code.</div></div>
+    <div class="card"><a href="account-corporate.html">corporate</a><div class="meta">Company-owned</div><div class="desc">Source of disbursement loads.</div></div>
+    <div class="card"><a href="account-global-cash.html">global_cash</a><div class="meta">System</div><div class="desc">Defined; no Ledger::CreateTransaction caller in current code.</div></div>
+    <div class="card"><a href="account-disbursement.html">disbursement</a><div class="meta">Company-owned</div><div class="desc">Holding account for an in-flight disbursement cycle.</div></div>
+    <div class="card"><a href="account-payee.html">payee</a><div class="meta">External mirror</div><div class="desc">Defined in Account::ACCOUNT_TYPES; no current Ledger::CreateTransaction path.</div></div>
+    <div class="card"><a href="account-suspense.html">suspense</a><div class="meta">System</div><div class="desc">Source for chargeback settlements.</div></div>
+  </div>
+
+  <h2>References</h2>
+  <div class="grid">
+    <div class="card"><a href="journal-entries.html">Journal entries reference</a><div class="desc">Every Dr/Cr pattern with anchors per scenario.</div></div>
+    <div class="card"><a href="glossary.html">Glossary</a><div class="desc">Account types, transaction statuses, terms.</div></div>
+  </div>
+
+  <h2>What is intentionally NOT here</h2>
+  <ul>
+    <li><strong>Wallet-to-wallet transfers</strong> — The <code>Transfer</code> model exists but no service in the repo calls <code>Ledger::CreateTransaction</code> on it; it operates as a record-keeping layer over CMS-side movements.</li>
+    <li><strong>Cashback flow</strong> — <code>Cashbacks::BulkCreator</code> only persists <code>Cashback</code> rows; no ledger writes were found.</li>
+    <li><strong>Earned-wage as a separate flow</strong> — EWA is folded into the salary disbursement via <code>EarnedWagesResolver</code>; it does not have its own ledger pathway.</li>
+    <li><strong>FX, multi-currency</strong> — All amounts are EGP today; <code>money-rails</code> is wired but no FX conversion path is documented.</li>
+    <li><strong>End-of-day reconciliation flow</strong> — No batch reconciliation service was located; reconciliation impact is noted on each flow page instead.</li>
+  </ul>
+</div>
+</body>
+</html>

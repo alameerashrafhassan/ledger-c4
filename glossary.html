@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Glossary · PayEngine Ledger</title>
+<style>
+  :root{--c-bg:#f5f7fa;--c-text:#222;--c-muted:#666;--c-customer:#1168BD;}
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;} .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; <strong>Glossary</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <h1>Glossary</h1>
+
+  <h2>Account types (<code>Account::ACCOUNT_TYPES</code>)</h2>
+  <table>
+    <thead><tr><th>Code</th><th>Owner</th><th>System?</th><th>Local?</th><th>Used in flows</th></tr></thead>
+    <tbody>
+      <tr><td><a href="account-cash.html">cash</a></td><td>Beneficiary (via Wallet)</td><td>No</td><td>Yes</td><td>Disbursement, Chargeback, Reversal</td></tr>
+      <tr><td><a href="account-cashback.html">cashback</a></td><td>None (system)</td><td>Yes</td><td>No</td><td>None today</td></tr>
+      <tr><td><a href="account-corporate.html">corporate</a></td><td>Company</td><td>No</td><td>No</td><td>Disbursement, Reversal</td></tr>
+      <tr><td><a href="account-global-cash.html">global_cash</a></td><td>None (system)</td><td>Yes</td><td>Yes</td><td>None today</td></tr>
+      <tr><td><a href="account-disbursement.html">disbursement</a></td><td>Company</td><td>No</td><td>No</td><td>Disbursement, Reversal</td></tr>
+      <tr><td><a href="account-payee.html">payee</a></td><td>—</td><td>No</td><td>No</td><td>None today</td></tr>
+      <tr><td><a href="account-suspense.html">suspense</a></td><td>None (system)</td><td>Yes</td><td>No</td><td>Chargeback, Reversal</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Ledger transaction statuses (<code>LedgerTransaction::STATUSES</code>)</h2>
+  <table>
+    <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>pending</code></td><td>Default after <code>create!</code>; entries not yet posted.</td></tr>
+      <tr><td><code>posted</code></td><td>Both entries posted and balances updated.</td></tr>
+      <tr><td><code>failure</code></td><td>Validation failed; <code>transaction_errors</code> populated.</td></tr>
+      <tr><td><code>void</code></td><td>Reserved status; not actively written by the documented flows.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Ledger entry statuses (<code>LedgerEntry::STATUSES</code>)</h2>
+  <table>
+    <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>pending</code></td><td>Default; created via <code>ledger_entries.pending.create!</code> before balance update.</td></tr>
+      <tr><td><code>posted</code></td><td>After <code>PostBalanceUpdate</code> succeeds.</td></tr>
+      <tr><td><code>archived</code></td><td>Soft-archive state for historical entries.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Ledger entry directions (<code>LedgerEntry::DIRECTIONS</code>)</h2>
+  <table>
+    <tbody>
+      <tr><td><code>debit</code></td><td>Decreases the source side. <code>debit_first</code> scope orders by direction desc.</td></tr>
+      <tr><td><code>credit</code></td><td>Increases the destination side. <code>credit_first</code> scope orders by direction asc.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Disbursement statuses</h2>
+  <p class="lead">Tracked on <code>Disbursement</code> and <code>EmployeeDisbursement</code>.</p>
+  <table>
+    <thead><tr><th>Status</th><th>Where</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>approved</code></td><td>Disbursement</td><td>Pre-condition: <code>Disbursement.approved.find</code> in <code>Processor</code>.</td></tr>
+      <tr><td><code>in_progress</code></td><td>Disbursement</td><td>Set under <code>with_lock</code>; second worker raises <code>UNIQUENESS_ERROR</code>.</td></tr>
+      <tr><td><code>completed</code></td><td>Disbursement / EmployeeDisbursement</td><td>All employees paid (or one employee paid).</td></tr>
+      <tr><td><code>failed</code></td><td>Disbursement / EmployeeDisbursement</td><td>Any employee failed (cycle) or specific transfer failed (per-employee).</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Chargeback statuses</h2>
+  <table>
+    <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>pending</code></td><td>Initial state; only this can transition to settled.</td></tr>
+      <tr><td><code>approved</code></td><td>Param value passed in to trigger settlement.</td></tr>
+      <tr><td><code>completed</code></td><td>Settlement ledger transaction posted.</td></tr>
+      <tr><td><code>failed</code></td><td>Settlement ledger transaction failed.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Key services</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>Ledger::CreateTransaction</code></td><td>The single entry point for posting a balanced transaction.</td></tr>
+      <tr><td><code>Ledger::RevertTransaction</code></td><td>Inverts a posted transaction by calling CreateTransaction with from/to swapped.</td></tr>
+      <tr><td><code>Ledger::Transactions::Validator</code></td><td>Validates a pending transaction against from/to before entries are posted.</td></tr>
+      <tr><td><code>Ledger::UpdateLocalAccount</code></td><td>Updates <code>accounts.posted_balance_cents</code> for a given entry.</td></tr>
+      <tr><td><code>Ledger::PostBalanceUpdate</code></td><td>Drives the balance-update step; can include CMS-side updates via <code>process_by</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Other terms</h2>
+  <table>
+    <tbody>
+      <tr><th>referrer</th><td>Polymorphic association on <code>LedgerTransaction</code> — usually the domain object that caused the transaction (Disbursement, EmployeeDisbursement, Chargeback). Optional.</td></tr>
+      <tr><th>reversal_transaction</th><td>Self-association on <code>LedgerTransaction</code>: original.reversal_transaction = the inverted transaction.</td></tr>
+      <tr><th>trx_uuid</th><td>Unique transaction identifier on <code>LedgerTransaction</code>; the database constraint that prevents duplicate posts.</td></tr>
+      <tr><th>posted vs available balance</th><td>Both are tracked on <code>Account</code> as <code>posted_balance_cents</code> and <code>available_balance_cents</code>; the documented flows update <code>posted_balance_cents</code> via <code>UpdateLocalAccount</code>.</td></tr>
+      <tr><th>system_account?</th><td><code>global_cash</code>, <code>cashback</code>, or <code>suspense</code>. No <code>accountable</code>.</td></tr>
+      <tr><th>local?</th><td><code>cash</code> or <code>global_cash</code>.</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

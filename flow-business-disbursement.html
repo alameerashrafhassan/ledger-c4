@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Disbursement — Business Flow · PayEngine Ledger</title>
+<style>
+  :root { --c-customer:#1168BD; --c-merchant:#2E8B57; --c-system:#6B46C1; --c-fee:#D97706; --c-suspense:#CA8A04; --c-external:#6B7280; --c-bg:#f5f7fa; --c-text:#222; --c-muted:#666; --tok:#1168BD; }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--c-bg);color:var(--c-text);
+       background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px);background-size:24px 24px;}
+  .page{max-width:1600px;margin:0 auto;padding:24px 32px 80px;background:#fff;box-shadow:0 0 12px rgba(0,0,0,0.06);}
+  .crumbs{font-size:13px;color:var(--c-muted);margin-bottom:6px;}
+  .crumbs a{color:var(--c-customer);text-decoration:none;} .crumbs a:hover{text-decoration:underline;}
+  .back{display:inline-block;margin:8px 0 14px;font-size:13px;color:var(--c-customer);text-decoration:none;padding:5px 9px;border:1px solid var(--c-customer);border-radius:4px;}
+  .back:hover{background:var(--c-customer);color:#fff;}
+  h1{margin:0 0 6px;font-size:26px;} h2{margin-top:30px;font-size:19px;border-bottom:1px solid #e3e6eb;padding-bottom:5px;} h3{font-size:15px;margin-top:18px;}
+  .lead{color:var(--c-muted);font-size:14px;max-width:1000px;}
+  .toggle-link{float:right;font-size:13px;}
+  .toggle-link a{color:var(--c-customer);text-decoration:none;border:1px solid var(--c-customer);padding:4px 8px;border-radius:4px;}
+  .toggle-link a:hover{background:var(--c-customer);color:#fff;}
+  .player{position:sticky;top:0;background:#fff;border:1px solid #e3e6eb;border-radius:8px;padding:10px 14px;margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+  .player button,.player select{font-size:13px;padding:5px 10px;border:1px solid #d0d4d9;background:#fff;border-radius:4px;cursor:pointer;}
+  .player button:hover{background:#f1f4f8;}
+  .player .step-counter{font-weight:600;font-size:13px;color:#333;margin-left:auto;}
+  .player .scenario{margin-left:8px;}
+  .stage{border:1px solid #e3e6eb;background:#fafbfc;border-radius:8px;padding:10px;}
+  svg.flow{display:block;width:100%;height:auto;}
+  svg.flow .acc-box{cursor:pointer;}
+  svg.flow .acc-box:hover{opacity:0.9;}
+  svg.flow .acc-box:hover text.bal{font-weight:700;}
+  svg.flow .step-arc{stroke:#bbb;stroke-width:1.5;fill:none;stroke-dasharray:4 3;}
+  svg.flow .step-arc.active{stroke:#1168BD;stroke-dasharray:none;}
+  svg.flow .step-arc.failed{stroke:#dc2626;}
+  svg.flow .token{opacity:0;}
+  svg.flow .token.show{opacity:1;}
+  svg.flow .token.failed circle{fill:#dc2626;}
+  svg.flow .step-pill{cursor:pointer;}
+  svg.flow .step-pill:hover rect{stroke:#1168BD;stroke-width:2;}
+  svg.flow .step-pill.active rect{stroke:#1168BD;stroke-width:2.5;fill:#e8f0fb;}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:12px;}
+  .legend .swatch{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-right:6px;}
+  table{border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;}
+  th,td{border:1px solid #e3e6eb;padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f4f8;}
+  td.amt{font-variant-numeric:tabular-nums;text-align:right;}
+  .step-detail{display:none;background:#f7faff;border-left:3px solid var(--c-customer);padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 0;}
+  .step-detail.open{display:block;}
+  .step-detail dl{display:grid;grid-template-columns:160px 1fr;gap:6px 12px;font-size:13px;margin:0;}
+  .step-detail dt{font-weight:600;color:#444;} .step-detail dd{margin:0;}
+  .step-row{cursor:pointer;}
+  .step-row:hover{background:#f7faff;}
+  .step-row.failed{background:#fff1f1;}
+  .integrity{margin-top:14px;padding:12px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;font-size:13px;}
+  .integrity.bad{background:#fef2f2;border-color:#fecaca;}
+  .integrity h3{margin:0 0 6px;color:#065f46;font-size:14px;}
+  .integrity.bad h3{color:#991b1b;}
+  code{background:#eef2f6;padding:1px 5px;border-radius:3px;font-size:12px;}
+  .tooltip{position:absolute;background:#222;color:#fff;font-size:12px;padding:4px 8px;border-radius:4px;pointer-events:none;display:none;}
+  @media print{ body{background:#fff;} .page{box-shadow:none;} .player{display:none;} svg.flow .token{display:none;} svg.flow .step-arc{stroke:#888;stroke-dasharray:none;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumbs"><a href="index.html">Home</a> &gt; Business flows &gt; <strong>Salary disbursement</strong></div>
+  <a class="back" href="index.html">← Back to Home</a>
+  <span class="toggle-link"><a href="flow-technical-disbursement.html">View technical flow →</a></span>
+
+  <h1>Salary disbursement</h1>
+  <p class="lead">
+    A company funds a payroll cycle: money is loaded from the company's <code>corporate</code> account
+    into a per-cycle <code>disbursement</code> holding account, then paid out one employee at a time
+    into each employee's <code>cash</code> account. Implementation:
+    <code>Disbursements::Processor</code> + <code>Disbursements::SubProcessor</code>.
+  </p>
+
+  <h3>Actors</h3>
+  <ul style="margin-top:4px;font-size:14px;">
+    <li><strong>Initiator:</strong> Corporate Admin (creates and approves the disbursement)</li>
+    <li><strong>Affected:</strong> Company (corporate + disbursement accounts), Employees (cash accounts)</li>
+    <li><strong>System:</strong> <code>Disbursements::Processor</code> running in Sidekiq</li>
+  </ul>
+
+  <!-- Player -->
+  <div class="player" id="player">
+    <button data-act="restart" title="Restart">⏮</button>
+    <button data-act="play" title="Play / Pause" id="btn-play">▶</button>
+    <button data-act="step" title="Step forward">⏩</button>
+    <label style="font-size:12px;color:#555;">Speed
+      <select data-act="speed">
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+      </select>
+    </label>
+    <label class="scenario" style="font-size:12px;color:#555;">Scenario
+      <select data-act="scenario">
+        <option value="happy" selected>Happy path</option>
+        <option value="failure">Failure (employee 2 fails)</option>
+      </select>
+    </label>
+    <span class="step-counter">Step <span id="step-now">0</span> of <span id="step-total">0</span></span>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--c-merchant)"></span>Company-owned</span>
+    <span><span class="swatch" style="background:var(--c-customer)"></span>Beneficiary-owned</span>
+    <span><span class="swatch" style="background:#dc2626"></span>Failed step</span>
+    <span>Token = money in motion · cylinders = ledger accounts · arrows = ledger transactions</span>
+  </div>
+
+  <div class="stage">
+    <svg class="flow" viewBox="0 0 1500 540" xmlns="http://www.w3.org/2000/svg" id="flowSvg">
+      <defs>
+        <linearGradient id="cylTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d6e3f"/><stop offset="1" stop-color="#2E8B57"/></linearGradient>
+        <linearGradient id="cylTopBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d4f8f"/><stop offset="1" stop-color="#1168BD"/></linearGradient>
+      </defs>
+
+      <!-- corporate cylinder -->
+      <a href="account-corporate.html"><g class="acc-box" id="acc-corp">
+        <ellipse cx="160" cy="100" rx="120" ry="14" fill="url(#cylTop)"/>
+        <rect x="40" y="100" width="240" height="120" fill="#2E8B57"/>
+        <ellipse cx="160" cy="220" rx="120" ry="14" fill="#2E8B57"/>
+        <text x="160" y="135" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">corporate</text>
+        <text x="160" y="155" fill="#dfeeda" font-size="11" text-anchor="middle">[Account.type=corporate]</text>
+        <text class="bal" x="160" y="195" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" data-base="200000" data-acc="corp">EGP 200,000</text>
+      </g></a>
+
+      <!-- disbursement cylinder -->
+      <a href="account-disbursement.html"><g class="acc-box" id="acc-disb">
+        <ellipse cx="660" cy="100" rx="120" ry="14" fill="url(#cylTop)"/>
+        <rect x="540" y="100" width="240" height="120" fill="#2E8B57"/>
+        <ellipse cx="660" cy="220" rx="120" ry="14" fill="#2E8B57"/>
+        <text x="660" y="135" fill="#fff" font-size="15" font-weight="700" text-anchor="middle">disbursement</text>
+        <text x="660" y="155" fill="#dfeeda" font-size="11" text-anchor="middle">[Account.type=disbursement]</text>
+        <text class="bal" x="660" y="195" fill="#fff" font-size="14" font-weight="700" text-anchor="middle" data-base="0" data-acc="disb">EGP 0</text>
+      </g></a>
+
+      <!-- 3 employee cash accounts -->
+      <a href="account-cash.html"><g class="acc-box" id="acc-emp1">
+        <ellipse cx="1280" cy="60" rx="100" ry="11" fill="url(#cylTopBlue)"/>
+        <rect x="1180" y="60" width="200" height="80" fill="#1168BD"/>
+        <ellipse cx="1280" cy="140" rx="100" ry="11" fill="#1168BD"/>
+        <text x="1280" y="86" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">employee A · cash</text>
+        <text class="bal" x="1280" y="115" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" data-base="0" data-acc="emp1">EGP 0</text>
+      </g></a>
+      <a href="account-cash.html"><g class="acc-box" id="acc-emp2">
+        <ellipse cx="1280" cy="200" rx="100" ry="11" fill="url(#cylTopBlue)"/>
+        <rect x="1180" y="200" width="200" height="80" fill="#1168BD"/>
+        <ellipse cx="1280" cy="280" rx="100" ry="11" fill="#1168BD"/>
+        <text x="1280" y="226" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">employee B · cash</text>
+        <text class="bal" x="1280" y="255" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" data-base="0" data-acc="emp2">EGP 0</text>
+      </g></a>
+      <a href="account-cash.html"><g class="acc-box" id="acc-emp3">
+        <ellipse cx="1280" cy="340" rx="100" ry="11" fill="url(#cylTopBlue)"/>
+        <rect x="1180" y="340" width="200" height="80" fill="#1168BD"/>
+        <ellipse cx="1280" cy="420" rx="100" ry="11" fill="#1168BD"/>
+        <text x="1280" y="366" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">employee C · cash</text>
+        <text class="bal" x="1280" y="395" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" data-base="0" data-acc="emp3">EGP 0</text>
+      </g></a>
+
+      <!-- Paths for animation (invisible reference) -->
+      <path id="p1" d="M 280,160 L 540,160" class="step-arc" data-step="1"/>
+      <path id="p2" d="M 780,160 C 980,160 1080,100 1180,100" class="step-arc" data-step="2"/>
+      <path id="p3" d="M 780,160 C 980,160 1080,240 1180,240" class="step-arc" data-step="3"/>
+      <path id="p4" d="M 780,160 C 980,160 1080,380 1180,380" class="step-arc" data-step="4"/>
+
+      <!-- Path labels (tooltips) -->
+      <text x="380" y="150" font-size="11" fill="#444" data-tip="Ledger::CreateTransaction(corp → disb, net_total)">load · EGP 90,000</text>
+      <text x="930" y="115" font-size="11" fill="#444" data-tip="SubProcessor: corp_unload + Ledger::CreateTransaction(disb → emp.account)">pay A · EGP 30,000</text>
+      <text x="930" y="195" font-size="11" fill="#444" data-tip="SubProcessor for employee B">pay B · EGP 30,000</text>
+      <text x="930" y="335" font-size="11" fill="#444" data-tip="SubProcessor for employee C">pay C · EGP 30,000</text>
+
+      <!-- Tokens -->
+      <g class="token" id="tok-1">
+        <circle r="16" fill="#1168BD"/>
+        <text fill="#fff" font-size="11" text-anchor="middle" dy="4">90,000</text>
+      </g>
+      <g class="token" id="tok-2">
+        <circle r="14" fill="#1168BD"/>
+        <text fill="#fff" font-size="10" text-anchor="middle" dy="3">30,000</text>
+      </g>
+      <g class="token" id="tok-3">
+        <circle r="14" fill="#1168BD"/>
+        <text fill="#fff" font-size="10" text-anchor="middle" dy="3">30,000</text>
+      </g>
+      <g class="token" id="tok-4">
+        <circle r="14" fill="#1168BD"/>
+        <text fill="#fff" font-size="10" text-anchor="middle" dy="3">30,000</text>
+      </g>
+
+      <!-- Step pills along the bottom -->
+      <g id="pills">
+        <g class="step-pill" data-step="1"><rect x="40" y="470" width="200" height="36" rx="6" fill="#fff" stroke="#d0d4d9"/><text x="140" y="492" font-size="12" text-anchor="middle">1 · Load disbursement</text></g>
+        <g class="step-pill" data-step="2"><rect x="260" y="470" width="200" height="36" rx="6" fill="#fff" stroke="#d0d4d9"/><text x="360" y="492" font-size="12" text-anchor="middle">2 · Pay employee A</text></g>
+        <g class="step-pill" data-step="3"><rect x="480" y="470" width="200" height="36" rx="6" fill="#fff" stroke="#d0d4d9"/><text x="580" y="492" font-size="12" text-anchor="middle">3 · Pay employee B</text></g>
+        <g class="step-pill" data-step="4"><rect x="700" y="470" width="200" height="36" rx="6" fill="#fff" stroke="#d0d4d9"/><text x="800" y="492" font-size="12" text-anchor="middle">4 · Pay employee C</text></g>
+      </g>
+    </svg>
+    <div class="tooltip" id="tt"></div>
+  </div>
+
+  <div class="integrity" id="integrity">
+    <h3 id="integrity-h">Ledger integrity check</h3>
+    <div id="integrity-body">Sum of debits = sum of credits across all steps. Awaiting playback…</div>
+  </div>
+
+  <h2>Step-by-step narrative</h2>
+  <p class="lead">Click any row to expand timestamp, journal entry, API touch points, and emitted events.</p>
+  <table id="narrative">
+    <thead><tr><th>#</th><th>Actor</th><th>Action</th><th>Amount</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr class="step-row" data-step="1"><td>1</td><td>Processor</td><td>Load net_total into disbursement account</td><td class="amt">90,000.00</td><td>corporate</td><td>disbursement</td><td>posted</td></tr>
+      <tr><td colspan="7" class="step-detail" data-detail="1">
+        <dl>
+          <dt>Source</dt><dd><code>Disbursements::Processor#load_into_disbursement</code></dd>
+          <dt>Ledger call</dt><dd><code>Ledger::CreateTransaction.new(corporate_account, disbursement_account, Money.new(net_total), referrer: disbursement)</code></dd>
+          <dt>Journal</dt><dd><a href="journal-entries.html#disbursement-load">Dr disbursement / Cr corporate · EGP 90,000</a></dd>
+          <dt>DB tables</dt><dd><code>ledger_transactions</code> (1 row, status=posted), <code>ledger_entries</code> (2 rows), <code>accounts</code> (balance updated)</dd>
+          <dt>API touched</dt><dd>None — internal-only ledger move</dd>
+          <dt>Events</dt><dd>None at this step</dd>
+        </dl>
+      </td></tr>
+      <tr class="step-row" data-step="2"><td>2</td><td>SubProcessor</td><td>Pay employee A net</td><td class="amt">30,000.00</td><td>disbursement</td><td>employee A · cash</td><td>posted</td></tr>
+      <tr><td colspan="7" class="step-detail" data-detail="2">
+        <dl>
+          <dt>Source</dt><dd><code>Disbursements::SubProcessor#transfer_successful?</code></dd>
+          <dt>Ledger call</dt><dd><code>Ledger::CreateTransaction.new(disbursement_account, employee.account, net_amount, referrer: wage)</code></dd>
+          <dt>Journal</dt><dd><a href="journal-entries.html#disbursement-pay">Dr employee_cash / Cr disbursement · EGP 30,000</a></dd>
+          <dt>DB tables</dt><dd><code>ledger_transactions</code>, <code>ledger_entries</code>, <code>accounts</code>; <code>employee_disbursements.status</code> → completed</dd>
+          <dt>Side-effects</dt><dd><code>SmsSenderJob.perform_later</code> on success</dd>
+        </dl>
+      </td></tr>
+      <tr class="step-row" data-step="3"><td>3</td><td>SubProcessor</td><td>Pay employee B net</td><td class="amt">30,000.00</td><td>disbursement</td><td>employee B · cash</td><td>posted</td></tr>
+      <tr><td colspan="7" class="step-detail" data-detail="3">
+        <dl>
+          <dt>Source</dt><dd><code>Disbursements::SubProcessor</code></dd>
+          <dt>Journal</dt><dd><a href="journal-entries.html#disbursement-pay">Dr employee_cash / Cr disbursement · EGP 30,000</a></dd>
+          <dt>Failure scenario</dt><dd>If <code>Ledger::CreateTransaction</code> fails, <code>employee_disbursements.status</code> → failed and the cycle finalises as failed (other employees still attempted).</dd>
+        </dl>
+      </td></tr>
+      <tr class="step-row" data-step="4"><td>4</td><td>SubProcessor</td><td>Pay employee C net</td><td class="amt">30,000.00</td><td>disbursement</td><td>employee C · cash</td><td>posted</td></tr>
+      <tr><td colspan="7" class="step-detail" data-detail="4">
+        <dl>
+          <dt>Source</dt><dd><code>Disbursements::SubProcessor</code></dd>
+          <dt>Journal</dt><dd><a href="journal-entries.html#disbursement-pay">Dr employee_cash / Cr disbursement · EGP 30,000</a></dd>
+          <dt>After all employees</dt><dd><code>Disbursements::Processor#finalise_as</code> sets disbursement.status=completed/failed and triggers <code>DisburserMailer</code>, <code>Notifications::Disbursements::Success</code>, optional <code>Analytics::SegmentPublisherJob</code>.</dd>
+        </dl>
+      </td></tr>
+    </tbody>
+  </table>
+
+  <h2>Double-entry journal</h2>
+  <table>
+    <thead><tr><th>Step</th><th>Dr Account</th><th>Cr Account</th><th>Amount (EGP)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>disbursement</td><td>corporate</td><td class="amt">90,000.00</td></tr>
+      <tr><td>2</td><td>employee A · cash</td><td>disbursement</td><td class="amt">30,000.00</td></tr>
+      <tr><td>3</td><td>employee B · cash</td><td>disbursement</td><td class="amt">30,000.00</td></tr>
+      <tr><td>4</td><td>employee C · cash</td><td>disbursement</td><td class="amt">30,000.00</td></tr>
+      <tr style="background:#f1f4f8;"><td colspan="3"><strong>Σ Debits</strong></td><td class="amt"><strong>180,000.00</strong></td></tr>
+      <tr style="background:#f1f4f8;"><td colspan="3"><strong>Σ Credits</strong></td><td class="amt"><strong>180,000.00</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="lead">Note: the sum across all 4 steps balances. After the cycle, the <code>disbursement</code> holding account nets to zero (loaded 90,000 in step 1, paid out 90,000 across steps 2–4).</p>
+
+  <h2>Pre-conditions</h2>
+  <ul style="font-size:14px;">
+    <li><code>Disbursement.status == approved</code> (<code>Processor</code> uses <code>Disbursement.approved.find</code>)</li>
+    <li><code>company.corporate_account</code> and <code>company.disbursement_account</code> both present</li>
+    <li>Each <code>EmployeeDisbursement</code> has a non-nil <code>employee.account</code></li>
+    <li>Disbursement is not already <code>in_progress</code> (enforced via <code>with_lock</code>)</li>
+    <li>EWA settlement (<code>EarnedWagesResolver</code>) returns true</li>
+  </ul>
+
+  <h2>Post-conditions</h2>
+  <ul style="font-size:14px;">
+    <li><code>Disbursement.status == completed</code> if every <code>EmployeeDisbursement</code> reached <code>completed</code>; else <code>failed</code></li>
+    <li>Disbursement holding account back to zero (assuming all employees paid)</li>
+    <li><code>DisburserMailer</code> + <code>Notifications::Disbursements::Success</code> fired</li>
+    <li>Successful disbursements publish to Segment via <code>Analytics::SegmentPublisherJob</code></li>
+    <li>If failed, <code>UnlinkEarnedWagesJob</code> is enqueued</li>
+  </ul>
+
+  <h2>Failure modes</h2>
+  <table>
+    <thead><tr><th>Failure</th><th>Where</th><th>Resulting state</th><th>Reversal path</th></tr></thead>
+    <tbody>
+      <tr><td>Already in progress</td><td><code>ensure_processing_uniqueness!</code></td><td>Raises; disbursement untouched</td><td>—</td></tr>
+      <tr><td>EWA resolution fails</td><td><code>settle_ewa</code></td><td>finalise_as :failed; no ledger writes</td><td>—</td></tr>
+      <tr><td>Load step fails</td><td>Step 1 <code>Ledger::CreateTransaction</code></td><td>LedgerTransaction.status=failure; disbursement marked failed</td><td>Not needed (no posted entries)</td></tr>
+      <tr><td>One employee step fails</td><td>Step n <code>Ledger::CreateTransaction</code></td><td>That employee_disbursement.status=failed; cycle finalises as failed; other employees may still have posted</td><td><a href="flow-business-reversal.html">Reversal flow</a> via <code>Ledger::RevertTransaction</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Reconciliation impact</h2>
+  <ul style="font-size:14px;">
+    <li>The <code>disbursement</code> holding account should net to zero by end of cycle. A non-zero balance after a failed cycle is the recon signal.</li>
+    <li>Sum of credits to <code>employee.cash</code> for the cycle should equal the load amount in step 1.</li>
+    <li>Failed cycles leave partial credits posted; ops resolve via <a href="flow-business-reversal.html">reversal</a> on each successful step that should not have shipped.</li>
+  </ul>
+
+<script>
+(function(){
+  const svg = document.getElementById('flowSvg');
+  const ttEl = document.getElementById('tt');
+  const stepNow = document.getElementById('step-now');
+  const stepTotal = document.getElementById('step-total');
+  const integ = document.getElementById('integrity');
+  const integH = document.getElementById('integrity-h');
+  const integBody = document.getElementById('integrity-body');
+
+  // Tooltips on path labels
+  document.querySelectorAll('svg.flow [data-tip]').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      ttEl.textContent = el.getAttribute('data-tip');
+      ttEl.style.display = 'block';
+    });
+    el.addEventListener('mousemove', e => {
+      ttEl.style.left = (e.pageX + 12) + 'px';
+      ttEl.style.top = (e.pageY + 12) + 'px';
+    });
+    el.addEventListener('mouseleave', () => ttEl.style.display = 'none');
+  });
+
+  // Step rows expand
+  document.querySelectorAll('.step-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const n = row.getAttribute('data-step');
+      const det = document.querySelector(`.step-detail[data-detail="${n}"]`);
+      if (det) det.classList.toggle('open');
+    });
+  });
+
+  // Step pills jump
+  document.querySelectorAll('.step-pill').forEach(p => {
+    p.addEventListener('click', () => seekTo(parseInt(p.getAttribute('data-step'),10)));
+  });
+
+  // Animation engine
+  const balances = { corp: 200000, disb: 0, emp1: 0, emp2: 0, emp3: 0 };
+  const baseBalances = Object.assign({}, balances);
+
+  function fmt(n){ return 'EGP ' + n.toLocaleString('en-US', {minimumFractionDigits:0}); }
+  function setBal(acc, val){
+    balances[acc] = val;
+    const t = svg.querySelector(`text.bal[data-acc="${acc}"]`);
+    if (t) t.textContent = fmt(val);
+  }
+  function resetBalances(){
+    Object.keys(baseBalances).forEach(k => setBal(k, baseBalances[k]));
+  }
+
+  // Steps definitions per scenario
+  function buildSteps(scenario){
+    const steps = [
+      { id:1, path:'#p1', tok:'#tok-1', amount:90000, from:'corp', to:'disb', failed:false },
+      { id:2, path:'#p2', tok:'#tok-2', amount:30000, from:'disb', to:'emp1', failed:false },
+      { id:3, path:'#p3', tok:'#tok-3', amount:30000, from:'disb', to:'emp2', failed: scenario === 'failure' },
+      { id:4, path:'#p4', tok:'#tok-4', amount:30000, from:'disb', to:'emp3', failed:false }
+    ];
+    return steps;
+  }
+
+  let scenario = 'happy';
+  let steps = buildSteps(scenario);
+  stepTotal.textContent = steps.length;
+
+  let state = { idx:0, playing:false, speed:1, raf:null, tStart:null };
+
+  function setActiveStep(i){
+    document.querySelectorAll('.step-pill').forEach(p => p.classList.toggle('active', parseInt(p.getAttribute('data-step'),10) === i));
+    document.querySelectorAll('svg.flow .step-arc').forEach(a => {
+      const s = parseInt(a.getAttribute('data-step'),10);
+      a.classList.toggle('active', s === i);
+    });
+    stepNow.textContent = i;
+  }
+
+  function moveToken(tokSel, pathSel, durMs, failed, onDone){
+    const tok = svg.querySelector(tokSel);
+    const path = svg.querySelector(pathSel);
+    if (!tok || !path) return onDone && onDone();
+    tok.classList.add('show');
+    if (failed) tok.classList.add('failed'); else tok.classList.remove('failed');
+    const len = path.getTotalLength();
+    const localStart = performance.now();
+    function frame(now){
+      if (!state.playing && state.tStart !== null){
+        // paused: re-anchor on resume
+        state.pausedAt = now;
+        return;
+      }
+      const elapsed = (now - localStart) * state.speed;
+      let p = Math.min(elapsed / durMs, 1);
+      // failure: bounce back at 60%
+      if (failed && p > 0.6) {
+        p = 0.6 - (p - 0.6) * 1.5;
+        if (p <= 0) p = 0;
+      }
+      const pt = path.getPointAtLength(p * len);
+      tok.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+      if ((!failed && p < 1) || (failed && p > 0)) {
+        state.raf = requestAnimationFrame(frame);
+      } else {
+        if (!failed) tok.classList.remove('show');
+        else { tok.classList.add('show'); }
+        onDone && onDone();
+      }
+    }
+    state.raf = requestAnimationFrame(frame);
+  }
+
+  function applyStepEffects(step){
+    if (step.failed) {
+      // mark the row visibly
+      const row = document.querySelector(`.step-row[data-step="${step.id}"]`);
+      if (row) row.classList.add('failed');
+      const arc = document.querySelector(`svg.flow .step-arc[data-step="${step.id}"]`);
+      if (arc) arc.classList.add('failed');
+    } else {
+      setBal(step.from, balances[step.from] - step.amount);
+      setBal(step.to, balances[step.to] + step.amount);
+    }
+    updateIntegrity();
+  }
+
+  function playStep(){
+    if (state.idx >= steps.length) { state.playing = false; document.getElementById('btn-play').textContent='▶'; return; }
+    const s = steps[state.idx];
+    setActiveStep(s.id);
+    const dur = 1000 / state.speed;
+    moveToken(s.tok, s.path, dur, s.failed, () => {
+      applyStepEffects(s);
+      state.idx += 1;
+      if (state.playing) setTimeout(playStep, 250 / state.speed);
+    });
+  }
+
+  function seekTo(stepNum){
+    // hard reset and replay up to stepNum
+    pause();
+    resetBalances();
+    document.querySelectorAll('.step-row').forEach(r => r.classList.remove('failed'));
+    document.querySelectorAll('svg.flow .step-arc').forEach(a => a.classList.remove('failed','active'));
+    state.idx = 0;
+    for (let i=0; i<stepNum && i<steps.length; i++){
+      applyStepEffects(steps[i]);
+      state.idx = i+1;
+    }
+    setActiveStep(stepNum);
+  }
+
+  function play(){
+    if (state.idx >= steps.length) restart();
+    state.playing = true;
+    document.getElementById('btn-play').textContent='⏸';
+    playStep();
+  }
+  function pause(){
+    state.playing = false;
+    document.getElementById('btn-play').textContent='▶';
+    if (state.raf) cancelAnimationFrame(state.raf);
+  }
+  function restart(){
+    pause();
+    resetBalances();
+    document.querySelectorAll('.step-row').forEach(r => r.classList.remove('failed'));
+    document.querySelectorAll('svg.flow .step-arc').forEach(a => a.classList.remove('failed','active'));
+    document.querySelectorAll('svg.flow .token').forEach(t => t.classList.remove('show','failed'));
+    state.idx = 0;
+    setActiveStep(0);
+    updateIntegrity();
+  }
+  function step(){
+    if (state.playing) return;
+    if (state.idx >= steps.length) restart();
+    const s = steps[state.idx];
+    setActiveStep(s.id);
+    moveToken(s.tok, s.path, 800 / state.speed, s.failed, () => {
+      applyStepEffects(s); state.idx += 1;
+    });
+  }
+
+  function updateIntegrity(){
+    // Sum debits = sum credits across applied steps (excluding failed).
+    let dr = 0, cr = 0;
+    for (let i=0; i<state.idx; i++){
+      const s = steps[i];
+      if (s.failed) continue;
+      dr += s.amount; cr += s.amount;
+    }
+    const disbHolding = balances.disb - baseBalances.disb;
+    const balanced = dr === cr;
+    integ.classList.toggle('bad', !balanced);
+    integH.textContent = balanced ? 'Ledger integrity check ✓' : 'Ledger integrity check ✗';
+    integBody.innerHTML =
+      'Σ debits = <strong>EGP ' + dr.toLocaleString('en-US') + '</strong>, ' +
+      'Σ credits = <strong>EGP ' + cr.toLocaleString('en-US') + '</strong>. ' +
+      'Disbursement holding account net change: <strong>EGP ' + disbHolding.toLocaleString('en-US') + '</strong>' +
+      (state.idx === steps.length && disbHolding === 0 ? ' (drained ✓)' : '') + '.';
+  }
+
+  document.querySelector('[data-act="play"]').addEventListener('click', () => state.playing ? pause() : play());
+  document.querySelector('[data-act="restart"]').addEventListener('click', restart);
+  document.querySelector('[data-act="step"]').addEventListener('click', step);
+  document.querySelector('[data-act="speed"]').addEventListener('change', e => { state.speed = parseFloat(e.target.value); });
+  document.querySelector('[data-act="scenario"]').addEventListener('change', e => {
+    scenario = e.target.value;
+    steps = buildSteps(scenario);
+    stepTotal.textContent = steps.length;
+    restart();
+  });
+
+  updateIntegrity();
+})();
+</script>
+</div>
+</body>
+</html>
